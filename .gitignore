@@ -1,0 +1,13 @@
+/.gradle/
+/build/
+/out/
+/bin/
+/.idea/
+/.vscode/
+*.iml
+*.class
+*.log
+/local.properties
+/gradle-app.setting
+/gradle-app.cache
+
