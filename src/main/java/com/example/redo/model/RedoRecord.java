@@ -9,7 +9,7 @@ public record RedoRecord(
         int length,
         int headerLength,
         int vld,
-        int scn,
+        long scn,
         int subScn,
         List<RedoChange> changes
 ) {
