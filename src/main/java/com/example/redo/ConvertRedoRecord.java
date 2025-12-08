@@ -17,6 +17,7 @@ public class ConvertRedoRecord {
     private long blk;
     private long offset;
     private long seq;
+    private int conUid;
     private Xid xid;
     int[] beforeCols;
     int[] afterCols;

@@ -33,7 +33,9 @@ public class RedoRecordParser {
         int vld = Byte.toUnsignedInt(recordBytes[4]);
         // 这里scn可能是commitScn
         long scn = getScn4Record(recordBytes,6);
+
         int subScn = BinaryUtil.getU32(recordBytes,12);
+        int conUid = BinaryUtil.getU32(recordBytes,16);
         int headerLength;
         if ((vld&4) ==4){
             headerLength = 68;
@@ -50,10 +52,10 @@ public class RedoRecordParser {
         if (hasChange) {
             List<RedoChange> changes = parseRedoChanges(headerLength,recordBytes);
             return new RedoRecord(header.blockNumber(),header.sequence(),header.offset(),
-                    length,headerLength, vld,scn,subScn,changes);
+                    length,headerLength, vld,scn,subScn,conUid,changes);
         }else {
             return new RedoRecord(header.blockNumber(),header.sequence(),header.offset(),
-                    length,headerLength, vld,scn,subScn,new ArrayList<>());
+                    length,headerLength, vld,scn,subScn,conUid,new ArrayList<>());
         }
     }
 

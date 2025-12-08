@@ -68,7 +68,7 @@ public class RecordConvertor {
         Xid xid = new Xid(xid0,(int)xid1,(int)xid2);
 
         return new ConvertRedoRecord(record.scn(), record.blockNumber(), record.offset(), record.sequence(),
-                xid, null, null, null, 0,null,null,null, ddlChange.changeCode(), null);
+                record.conUid(), xid, null, null, null, 0,null,null,null, ddlChange.changeCode(), null);
     }
 
     private static ConvertRedoRecord ddl(RedoRecord record, byte[] recordBytes) {
@@ -86,7 +86,7 @@ public class RecordConvertor {
         int objId = BinaryUtil.getU32(recordBytes,vectors[0x0B][1]);
         String ddlSql = new String(Arrays.copyOfRange(recordBytes, vectors[7][1], vectors[7][1] + vectors[7][0]-1));
         return new ConvertRedoRecord(record.scn(), record.blockNumber(), record.offset(), record.sequence(),
-                null, null, null, null, objId,null,null,null, ddlChange.changeCode(), ddlSql);
+                record.conUid(), null, null, null, null, objId,null,null,null, ddlChange.changeCode(), ddlSql);
     }
 
     private static Xid getXid(int[][] vectors, byte[] recordBytes){
@@ -195,6 +195,7 @@ public class RecordConvertor {
                 record.blockNumber(),
                 record.offset(),
                 record.sequence(),
+                record.conUid(),
                 xid,
                 beforeCols,
                 afterCols,
@@ -248,6 +249,7 @@ public class RecordConvertor {
                 record.blockNumber(),
                 record.offset(),
                 record.sequence(),
+                record.conUid(),
                 beforeXid,
                 beforeCols,
                 null,
@@ -299,6 +301,7 @@ public class RecordConvertor {
                 record.blockNumber(),
                 record.offset(),
                 record.sequence(),
+                record.conUid(),
                 xid,
                 null,
                 cols,
