@@ -63,9 +63,10 @@ public class RecordConvertor {
         int[][] afterVectors = ddlChange.vectors();
         int xid1 = BinaryUtil.getU16(recordBytes,afterVectors[0][1]);
         int cls = ddlChange.changeHeader().cls();
-        int xid2 = BinaryUtil.getU32(recordBytes,afterVectors[0][1]+4);
+        int xid2 = BinaryUtil.getU16(recordBytes,afterVectors[0][1]+4);
+        int xid3 = BinaryUtil.getU16(recordBytes,afterVectors[0][1]+6);
         final short xid0 = (short) (cls >= 0x0F ? (cls - 0x0F) / 2 : -1);
-        Xid xid = new Xid(xid0,(int)xid1,(int)xid2);
+        Xid xid = new Xid(xid0, xid1, xid2, xid3);
 
         return new ConvertRedoRecord(record.scn(), record.blockNumber(), record.offset(), record.sequence(),
                 record.conUid(), xid, null, null, null, 0,null,null,null, ddlChange.changeCode(), null);
@@ -96,8 +97,9 @@ public class RecordConvertor {
         System.arraycopy(recordBytes,start,segment,0,len);
         int xid0 = BinaryUtil.getU16(segment,8);
         int xid1 = BinaryUtil.getU16(segment,10);
-        int xid2 = BinaryUtil.getU32(segment,12);
-        return new Xid(xid0,xid1,xid2);
+        int xid2 = BinaryUtil.getU16(segment,12);
+        int xid3 = BinaryUtil.getU16(segment,14);
+        return new Xid(xid0,xid1,xid2,xid3);
     }
 
     private static ConvertRedoRecord update(RedoRecord record, byte[] recordBytes) {
@@ -123,7 +125,7 @@ public class RecordConvertor {
         int colCount = afterColsBytes.length/2;
         int [] afterCols = new int[colCount];
         for (int i = 0; i < afterColsBytes.length; i+=2) {
-            afterCols[i/2] = (Byte.toUnsignedInt(afterColsBytes[i+1]) << 8) | Byte.toUnsignedInt(afterColsBytes[i]);
+            afterCols[i/2] = (Byte.toUnsignedInt(afterColsBytes[i+1]) << 8) | Byte.toUnsignedInt(afterColsBytes[i])+1;
         }
         List<byte[]> afterDatas = new ArrayList<>();
         int afterStartIndex = 3;
@@ -146,7 +148,7 @@ public class RecordConvertor {
         int colCountBefore = beforeColsBytes.length/2;
         int [] beforeCols = new int[colCountBefore];
         for (int i = 0; i < beforeColsBytes.length; i+=2) {
-            beforeCols[i/2] = (Byte.toUnsignedInt(beforeColsBytes[i+1]) << 8) | Byte.toUnsignedInt(beforeColsBytes[i]);
+            beforeCols[i/2] = (Byte.toUnsignedInt(beforeColsBytes[i+1]) << 8) | Byte.toUnsignedInt(beforeColsBytes[i])+1;
         }
         List<byte[]> beforeDatas = new ArrayList<>();
         int beforeStartDataIndex = beforeStartIndex+1;
@@ -170,7 +172,7 @@ public class RecordConvertor {
         int [] otherCols = new int[colCountOther];
         // 此处列索引要-1
         for (int i = 0; i < otherColsBytes.length; i+=2) {
-            otherCols[i/2] = (Byte.toUnsignedInt(otherColsBytes[i+1]) << 8) | Byte.toUnsignedInt(otherColsBytes[i])-1;
+            otherCols[i/2] = (Byte.toUnsignedInt(otherColsBytes[i+1]) << 8) | Byte.toUnsignedInt(otherColsBytes[i]);
         }
 
         List<byte[]> otherDatas = new ArrayList<>();
@@ -184,11 +186,6 @@ public class RecordConvertor {
             System.arraycopy(recordBytes,start,data,0,len);
             otherDatas.add(data);
         }
-//        System.out.println("--------------------");
-//        System.out.println("obj Id: "+objId);
-//        System.out.println(" op:"+redoChange.changeCode());
-//        System.out.println("colIds:"+ Arrays.toString(cols));
-//        System.out.println("data:"+ Arrays.toString(datas.toArray()));
 
         return new ConvertRedoRecord(
                 record.scn(),
@@ -225,7 +222,7 @@ public class RecordConvertor {
         int beforeColCount = Byte.toUnsignedInt(recordBytes[beforeVectors[beforeStartIndex][1] + 0x12]);
         int[] beforeCols = new int[beforeColCount];
         for (int i = 0; i < beforeColCount; i++) {
-            beforeCols[i] = i;
+            beforeCols[i] = i+1;
         }
 
         List<byte[]> beforeDatas = new ArrayList<>();
@@ -238,12 +235,6 @@ public class RecordConvertor {
             System.arraycopy(recordBytes,start,data,0,len);
             beforeDatas.add(data);
         }
-//        System.out.println("--------------------");
-//        System.out.println("obj Id: "+objId);
-//        System.out.println(" op:"+redoChange.changeCode());
-//        System.out.println("colIds:"+ Arrays.toString(cols));
-//        System.out.println("data:"+ Arrays.toString(datas.toArray()));
-
         return new ConvertRedoRecord(
                 record.scn(),
                 record.blockNumber(),
@@ -290,11 +281,6 @@ public class RecordConvertor {
             System.arraycopy(recordBytes,start,data,0,len);
             datas.add(data);
         }
-//        System.out.println("--------------------");
-//        System.out.println("obj Id: "+objId);
-//        System.out.println(" op:"+redoChange.changeCode());
-//        System.out.println("colIds:"+ Arrays.toString(cols));
-//        System.out.println("data:"+ Arrays.toString(datas.toArray()));
 
         return new ConvertRedoRecord(
                 record.scn(),

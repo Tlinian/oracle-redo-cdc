@@ -1,6 +1,7 @@
 package com.example.redo.parser;
 
 import com.example.redo.ConvertRedoRecord;
+import com.example.redo.deserialize.Deserializer;
 import com.example.redo.deserialize.RecordDeserializer;
 import com.example.redo.model.*;
 import com.example.redo.util.BinaryUtil;
@@ -65,8 +66,9 @@ public class RedoParser {
     );
     private final int recordLimit;
 
-    public RedoParser(int recordLimit) {
+    public RedoParser(int recordLimit, Deserializer deserializer) {
         this.recordLimit = recordLimit;
+        this.deserializer = deserializer;
     }
 
     private byte[] lastRecord ;
@@ -74,7 +76,7 @@ public class RedoParser {
     private int lastRecordLen = 0;
     private int copiedRecordLen = 0;
     private int needCopyLen = 0;
-    private RecordDeserializer deserializer = new RecordDeserializer();
+    private Deserializer deserializer;
 
 
     public RedoParseResult parse(Path file) throws IOException {

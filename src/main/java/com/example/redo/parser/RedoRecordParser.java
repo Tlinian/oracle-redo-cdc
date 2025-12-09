@@ -71,7 +71,6 @@ public class RedoRecordParser {
                 case INSERT ->{
                     RedoChange redoChange = parseRedoChange(recordBytes, offset,ChangeCode.INSERT);
                     changes.add(redoChange);
-                    printInsert(redoChange,recordBytes);
                     offset += redoChange.changeLength();
                 }
                 case DELETE ->{
@@ -114,13 +113,6 @@ public class RedoRecordParser {
             }
         }
 
-        if (Objects.equals(changeCode, ChangeCode.UPDATE)) {
-            printUpdate(changes,recordBytes);
-        }
-
-        if (Objects.equals(changeCode, ChangeCode.DELETE)) {
-            printDelete(changes,recordBytes);
-        }
         return changes;
     }
 
@@ -159,11 +151,6 @@ public class RedoRecordParser {
     private static void printInsert(RedoChange redoChange,byte[] recordBytes) throws SQLException {
         int objId = redoChange.data_object_id();
         // 73291
-        if (objId == 73291||objId == 73059){
-            System.out.print("");
-        }else {
-            return;
-        }
         int[][] vectors = redoChange.vectors();
         int vectorLength = vectors[2][0];
         int vectorCurrent = vectors[2][1];
