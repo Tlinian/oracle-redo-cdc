@@ -2,9 +2,10 @@ package com.example.redo.parser;
 
 import com.example.redo.ConvertRedoRecord;
 import com.example.redo.deserialize.Deserializer;
-import com.example.redo.deserialize.RecordDeserializer;
+import com.example.redo.deserialize.RBA;
 import com.example.redo.model.*;
 import com.example.redo.util.BinaryUtil;
+import lombok.Getter;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -77,7 +78,13 @@ public class RedoParser {
     private int copiedRecordLen = 0;
     private int needCopyLen = 0;
     private Deserializer deserializer;
+    @Getter
+    private RBA dba;
 
+    public RedoParseResult parse(Path file, RBA dba) throws IOException {
+        this.dba = dba;
+        return parse(file);
+    }
 
     public RedoParseResult parse(Path file) throws IOException {
         Objects.requireNonNull(file, "file");
@@ -95,7 +102,7 @@ public class RedoParser {
                 byte[] block = readBlock(channel, pos, blockSize);
                 BlockHeader header = BlockHeader.parseBlockHeader(block);
 
-                if (blockIndex < 2) { // block0 和 block1 只读取头信息，不解析记录
+                if (blockIndex < 2||(dba!=null&&blockIndex < dba.getBlk())) { // block0 和 block1 只读取头信息，不解析记录
                     seq = Math.toIntExact(header.sequence());
                     continue;
                 }else {
@@ -116,6 +123,7 @@ public class RedoParser {
                         System.arraycopy(block, BlockHeader.BLOCK_HEADER_SIZE,lastRecord, copiedRecordLen, needCopyLen);
                         RedoRecord redoRecord = RedoRecordParser.parseRedoRecord(header, lastRecord);
                         ConvertRedoRecord convert = RecordConvertor.convert(redoRecord, lastRecord);
+                        dba = new RBA(header.sequence(), header.offset(), header.blockNumber());
                         deserializer.processRecord(convert);
                         if (needCopyLen > blockSize - 24 - 16) {
                             lastRecord = null;
@@ -158,6 +166,7 @@ public class RedoParser {
                         System.arraycopy(block, cursor, record, 0, recordLen);
                         RedoRecord redoRecord = RedoRecordParser.parseRedoRecord(header,record);
                         ConvertRedoRecord convert = RecordConvertor.convert(redoRecord, record);
+                        dba = new RBA(header.sequence(), header.offset(), header.blockNumber());
                         deserializer.processRecord(convert);
 //                        System.out.println("current block: " + blockIndex + ", record len: " + recordLen);
                         if (cursor + recordLen > blockSize - 24) {

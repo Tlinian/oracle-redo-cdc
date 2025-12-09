@@ -4,6 +4,7 @@ import com.example.redo.config.Config;
 import com.example.redo.deserialize.RecordDeserializer;
 import com.example.redo.deserialize.RedoEvent;
 import com.example.redo.metadata.MetadataManager;
+import com.example.redo.parser.RedoMiner;
 import com.example.redo.parser.RedoParser;
 
 import java.io.IOException;
@@ -29,12 +30,8 @@ public class RedoClient {
 
     public void start() {
         String redoFileName = config.getRedoFileName();
-        RedoParser redoParser = new RedoParser(0, recordDeserializer);
-        try {
-            redoParser.parse(Path.of(redoFileName));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        RedoMiner redoMiner = new RedoMiner(config, recordDeserializer);
+        redoMiner.parseRedoFile();
     }
 
     public RedoEvent getRedoEvent() {
