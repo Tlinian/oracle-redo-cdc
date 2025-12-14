@@ -4,6 +4,7 @@ import com.example.redo.model.ChangeCode;
 
 public enum EventType {
     INSERT,
+    INSERT_MULTI,
     UPDATE,
     DELETE,
     DDL,

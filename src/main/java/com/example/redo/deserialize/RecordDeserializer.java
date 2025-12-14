@@ -47,6 +47,8 @@ public class RecordDeserializer implements Deserializer {
                 return new CommitEvent(redoRecord.getScn(), redoRecord.getScn());
             case INSERT:
                 return insertRecord(redoRecord);
+            case INSERT_MULTI:
+                return insertMultiRecord(redoRecord);
             case DELETE:
                 return deleteRecord(redoRecord);
             case UPDATE:
@@ -54,6 +56,19 @@ public class RecordDeserializer implements Deserializer {
             default:
                 return null;
         }
+    }
+
+    public RedoEvent insertMultiRecord(ConvertRedoRecord record) {
+        List<byte[]> after = record.getAfter();
+        int[] afterCols = record.getAfterCols();
+        TableId tableId = metadataManager.getTableIdMap().get(record.getObjId());
+        TableMetadata tableMetadata = metadataManager.getTableMetadataMap().get(tableId);
+        List<Object> afterData = new ArrayList<>();
+        for (int i = 0; i < after.size(); i++) {
+            afterData.add(tableMetadata.getColumnIdMap().get(afterCols[i]).convertData(after.get(i)));
+        }
+        return new DmlEvent(record.getScn(), record.getBlk(), record.getOffset(), record.getSeq(), record.getXid(),
+                record.getScn(), EventType.INSERT, tableId, record.getObjId(), null, afterData);
     }
 
     public RedoEvent insertRecord(ConvertRedoRecord record) {

@@ -50,19 +50,20 @@ public class RedoRecordParser {
         }
 
         if (hasChange) {
-            List<RedoChange> changes = parseRedoChanges(headerLength,recordBytes);
-            return new RedoRecord(header.blockNumber(),header.sequence(),header.offset(),
-                    length,headerLength, vld,scn,subScn,conUid,changes);
+            RedoRecord redoRecord = parseRedoChanges(recordBytes,header,length,headerLength, vld,scn,subScn,conUid);
+            return redoRecord;
         }else {
             return new RedoRecord(header.blockNumber(),header.sequence(),header.offset(),
-                    length,headerLength, vld,scn,subScn,conUid,new ArrayList<>());
+                    length,headerLength, vld,scn,subScn,conUid,new ArrayList<>(),null);
         }
     }
 
-    public static List<RedoChange> parseRedoChanges(int headerLength, byte[] recordBytes) throws SQLException {
+    public static RedoRecord parseRedoChanges(byte[] recordBytes,
+                                              BlockHeader header,int length,int headerLength, int vld, long scn, int subScn, int conUid) throws SQLException {
         int offset = headerLength;
         List<RedoChange> changes = new ArrayList<>();
         ChangeCode changeCode = null;
+        RedoChange change = null;
         while (offset < recordBytes.length) {
             byte layer = recordBytes[offset];
             byte code = recordBytes[offset+1];
@@ -72,18 +73,27 @@ public class RedoRecordParser {
                     RedoChange redoChange = parseRedoChange(recordBytes, offset,ChangeCode.INSERT);
                     changes.add(redoChange);
                     offset += redoChange.changeLength();
+                    change = redoChange;
                 }
                 case DELETE ->{
                     RedoChange redoChange = parseRedoChange(recordBytes, offset,ChangeCode.DELETE);
                     changes.add(redoChange);
                     changeCode = redoChange.changeCode();
                     offset += redoChange.changeLength();
+                    change = redoChange;
                 }
                 case UPDATE ->{
                     RedoChange redoChange = parseRedoChange(recordBytes, offset,ChangeCode.UPDATE);
                     changes.add(redoChange);
                     changeCode = ChangeCode.UPDATE;
                     offset += redoChange.changeLength();
+                    change = redoChange;
+                }
+                case INSERT_MULTI ->{
+                    RedoChange redoChange = parseRedoChange(recordBytes, offset,ChangeCode.INSERT_MULTI);
+                    changes.add(redoChange);
+                    offset += redoChange.changeLength();
+                    change = redoChange;
                 }
                 case UNDO_SEM ->{
                     RedoChange redoChange = parseRedoChange(recordBytes, offset,ChangeCode.UNDO_SEM);
@@ -99,6 +109,28 @@ public class RedoRecordParser {
                     RedoChange redoChange = parseRedoChange(recordBytes, offset,ChangeCode.COMMIT);
                     changes.add(redoChange);
                     offset += redoChange.changeLength();
+                    change = redoChange;
+                }
+                case LOB_REDO -> {
+                    RedoChange redoChange = parseRedoChange(recordBytes, offset,ChangeCode.LOB_REDO);
+                    changes.add(redoChange);
+                    offset += redoChange.changeLength();
+                    change = redoChange;
+                }  case LOB_UINDO_REDO -> {
+                    RedoChange redoChange = parseRedoChange(recordBytes, offset,ChangeCode.LOB_UINDO_REDO);
+                    changes.add(redoChange);
+                    offset += redoChange.changeLength();
+                    change = redoChange;
+                }case LOAD_LOB -> {
+                    RedoChange redoChange = parseRedoChange(recordBytes, offset,ChangeCode.LOAD_LOB);
+                    changes.add(redoChange);
+                    offset += redoChange.changeLength();
+                    change = redoChange;
+                }case LLB -> {
+                    RedoChange redoChange = parseRedoChange(recordBytes, offset,ChangeCode.LLB);
+                    changes.add(redoChange);
+                    offset += redoChange.changeLength();
+                    change = redoChange;
                 }
                 case DDL ->{
                     RedoChange redoChange = parseRedoChange(recordBytes, offset,ChangeCode.DDL);
@@ -110,16 +142,23 @@ public class RedoRecordParser {
                     changes.add(redoChange);
                     offset += redoChange.changeLength();
                 }
+                // Byte.toUnsignedInt(recordBytes[vectors[1][1] + 0x12]); =rowcount 3
+//                Byte.toUnsignedInt(recordBytes[vectors[3][1] + 2]); colCount 2
+//                Byte.toUnsignedInt(record[coords[index +2][0] + 3]); colsize
+//                coords[index + 2][0] + 4 start
+//                 Byte.toUnsignedInt(record[coords[index +2][0] + rowDiff++]); col2 size
+
             }
         }
 
-        return changes;
+        return new RedoRecord(header.blockNumber(),header.sequence(),header.offset(),
+                length,headerLength, vld,scn,subScn,conUid,changes,change);
     }
 
     private static RedoChange parseRedoChange(byte[] recordBytes,  int offset,ChangeCode changeCode) {
         ChangeHeader changeHeader = ChangeHeader.parseChangeHeader(recordBytes, offset);
         int data_object_id = (changeHeader.obj0() << 16) | changeHeader.obj1();
-        if (changeCode.equals(ChangeCode.INSERT)&&(data_object_id == 73291||data_object_id == 73059)) {
+        if ((data_object_id == 73169|| data_object_id == 73168)) {
             System.out.print("");
         }
         int vectorActTabLength = BinaryUtil.getU16(recordBytes, offset +ChangeHeader.CHANGE_HEADER_SIZE);
@@ -137,7 +176,18 @@ public class RedoRecordParser {
             vectors[i][1] = vectorCurrent;
             vectorCurrent+=actVectorLength;
         }
-        return new RedoChange(changeHeader,data_object_id,vectors,vectorCurrent-offset,changeCode);
+        int obj = 0;
+        if (vectorSize > 2) {
+            int i = vectors[2][1];
+            if (i<recordBytes.length-0x24) {
+                obj  = BinaryUtil.getU32(recordBytes, i + 0x24);
+                if ((obj == 73169)) {
+                    System.out.print("");
+                }
+            }
+
+        }
+        return new RedoChange(changeHeader,data_object_id == 0?obj:data_object_id,vectors,vectorCurrent-offset,changeCode);
     }
 
     private static short appendFour(short data){

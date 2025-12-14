@@ -1,11 +1,11 @@
 package com.example.redo.metadata;
 
 public class Checker {
-    private int conUid;
+    private long conUid;
 
     private CheckerFunction checkerFunction;
 
-    public Checker(int conUid,CheckerFunction checkerFunction) {
+    public Checker(long conUid,CheckerFunction checkerFunction) {
         this.conUid = conUid;
         this.checkerFunction = checkerFunction;
     }
@@ -15,7 +15,7 @@ public class Checker {
         boolean check(int objId);
     }
 
-    public boolean check(int conUid,int objId){
-        return this.conUid == conUid && checkerFunction.check(objId);
+    public boolean check(long conUid,int objId){
+        return  checkerFunction.check(objId);
     }
 }

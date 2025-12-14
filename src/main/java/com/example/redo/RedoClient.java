@@ -30,7 +30,7 @@ public class RedoClient {
 
     public void start() {
         String redoFileName = config.getRedoFileName();
-        RedoMiner redoMiner = new RedoMiner(config, recordDeserializer);
+        RedoMiner redoMiner = new RedoMiner(config, recordDeserializer,metadataManager.getChecker());
         redoMiner.parseRedoFile();
     }
 

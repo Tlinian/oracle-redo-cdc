@@ -12,7 +12,8 @@ public record RedoRecord(
         long scn,
         int subScn,
         int conUid,
-        List<RedoChange> changes
+        List<RedoChange> changes,
+        RedoChange change
 ) {
 }
 

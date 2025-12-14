@@ -40,8 +40,8 @@ public class MetadataManager {
     private static final String PASSWORD = "oracle";
     private Config config;
     private Connection connection;
-    private int conUid;
-    private int conId;
+    private long conUid;
+    private long conId;
 
 
     private Map<Integer,TableId> tableIdMap = new HashMap<>();
@@ -73,8 +73,8 @@ public class MetadataManager {
             statement.setString(1, config.getDatabase());
             var resultSet = statement.executeQuery();
             if (resultSet.next()) {
-                conId = resultSet.getInt(1);
-                conUid = resultSet.getInt(2);
+                conId = resultSet.getLong(1);
+                conUid = resultSet.getLong(2);
             }else {
                 throw  new SQLException("CON_UID not found for database: " + config.getDatabase());
             }

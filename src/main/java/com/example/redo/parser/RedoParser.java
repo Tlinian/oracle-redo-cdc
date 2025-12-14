@@ -3,6 +3,7 @@ package com.example.redo.parser;
 import com.example.redo.ConvertRedoRecord;
 import com.example.redo.deserialize.Deserializer;
 import com.example.redo.deserialize.RBA;
+import com.example.redo.metadata.Checker;
 import com.example.redo.model.*;
 import com.example.redo.util.BinaryUtil;
 import lombok.Getter;
@@ -13,10 +14,7 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 public class RedoParser {
 
@@ -66,10 +64,13 @@ public class RedoParser {
             Map.entry("24.3", OperationType.DDL)
     );
     private final int recordLimit;
+    private final Checker checker;
+    private Map<Xid,OracleTranction> xidOracleTranctionMap = new HashMap<>();
 
-    public RedoParser(int recordLimit, Deserializer deserializer) {
+    public RedoParser(int recordLimit, Deserializer deserializer,Checker checker) {
         this.recordLimit = recordLimit;
         this.deserializer = deserializer;
+        this.checker = checker;
     }
 
     private byte[] lastRecord ;
@@ -122,9 +123,28 @@ public class RedoParser {
                     }else {
                         System.arraycopy(block, BlockHeader.BLOCK_HEADER_SIZE,lastRecord, copiedRecordLen, needCopyLen);
                         RedoRecord redoRecord = RedoRecordParser.parseRedoRecord(header, lastRecord);
-                        ConvertRedoRecord convert = RecordConvertor.convert(redoRecord, lastRecord);
+                        ConvertRedoRecord convert = RecordConvertor.convert(redoRecord, lastRecord,checker);
+                        if (convert != null) {
+                            if (xidOracleTranctionMap.containsKey(convert.getXid())){
+                                OracleTranction oracleTranction = xidOracleTranctionMap.get(convert.getXid());
+                                if (convert.getChangeCode() == ChangeCode.COMMIT){
+                                    oracleTranction.convertRedoChanges().forEach(redoChange -> {
+                                        deserializer.processRecord(redoChange);
+                                    });
+                                }else {
+                                    oracleTranction.getRedoChanges().add(convert);
+                                }
+                            }else {
+                                if (convert.getChangeCode() != ChangeCode.COMMIT){
+                                    OracleTranction oracleTranction = new OracleTranction();
+                                    oracleTranction.getRedoChanges().add(convert);
+                                    oracleTranction.setXid(convert.getXid());
+                                    xidOracleTranctionMap.put(convert.getXid(),oracleTranction);
+                                }
+                            }
+                        }
                         dba = new RBA(header.sequence(), header.offset(), header.blockNumber());
-                        deserializer.processRecord(convert);
+//                        deserializer.processRecord(convert);
                         if (needCopyLen > blockSize - 24 - 16) {
                             lastRecord = null;
                             copiedRecordLen = 0;
@@ -165,9 +185,28 @@ public class RedoParser {
                         byte[] record = new byte[recordLen];
                         System.arraycopy(block, cursor, record, 0, recordLen);
                         RedoRecord redoRecord = RedoRecordParser.parseRedoRecord(header,record);
-                        ConvertRedoRecord convert = RecordConvertor.convert(redoRecord, record);
+                        ConvertRedoRecord convert = RecordConvertor.convert(redoRecord, record,checker);
+                        if (convert != null) {
+                            if (xidOracleTranctionMap.containsKey(convert.getXid())){
+                                OracleTranction oracleTranction = xidOracleTranctionMap.get(convert.getXid());
+                                if (convert.getChangeCode() == ChangeCode.COMMIT){
+                                    oracleTranction.convertRedoChanges().forEach(redoChange -> {
+                                        deserializer.processRecord(redoChange);
+                                    });
+                                }else {
+                                    oracleTranction.getRedoChanges().add(convert);
+                                }
+                            }else {
+                                if (convert.getChangeCode() != ChangeCode.COMMIT){
+                                    OracleTranction oracleTranction = new OracleTranction();
+                                    oracleTranction.getRedoChanges().add(convert);
+                                    oracleTranction.setXid(convert.getXid());
+                                    xidOracleTranctionMap.put(convert.getXid(),oracleTranction);
+                                }
+                            }
+                        }
                         dba = new RBA(header.sequence(), header.offset(), header.blockNumber());
-                        deserializer.processRecord(convert);
+//                        deserializer.processRecord(convert);
 //                        System.out.println("current block: " + blockIndex + ", record len: " + recordLen);
                         if (cursor + recordLen > blockSize - 24) {
                             // 没法满足record

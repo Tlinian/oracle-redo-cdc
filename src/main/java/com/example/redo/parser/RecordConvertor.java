@@ -1,6 +1,8 @@
 package com.example.redo.parser;
 
+import com.example.redo.ConvertLlbRedoRecord;
 import com.example.redo.ConvertRedoRecord;
+import com.example.redo.metadata.Checker;
 import com.example.redo.model.ChangeCode;
 import com.example.redo.model.RedoChange;
 import com.example.redo.model.RedoRecord;
@@ -14,40 +16,86 @@ import java.util.Arrays;
 import java.util.List;
 
 public class RecordConvertor {
-    public static ConvertRedoRecord convert(RedoRecord record, byte[] recordBytes) throws SQLException {
+    public static ConvertRedoRecord convert(RedoRecord record, byte[] recordBytes, Checker checker) throws SQLException {
         List<RedoChange> changes = record.changes();
-        ChangeCode changeCode = null;
-        for(RedoChange change : changes){
-            if (change.changeCode() == ChangeCode.INSERT){
-                changeCode = change.changeCode();
-            }else if (change.changeCode() == ChangeCode.DELETE){
-                changeCode = change.changeCode();
-            }else  if (change.changeCode() == ChangeCode.UPDATE){
-                changeCode = change.changeCode();
-            }else if (change.changeCode() == ChangeCode.DDL){
-                changeCode = change.changeCode();
-            }else if (change.changeCode() == ChangeCode.COMMIT){
-                changeCode = change.changeCode();
-            }
-        }
-        if (changeCode == null){
+        RedoChange redoChange = record.change();
+        if (redoChange == null){
             return null;
         }
+
+        ChangeCode changeCode = redoChange.changeCode();
+       if (changeCode !=ChangeCode.COMMIT){
+           if (checker != null && !checker.check(record.conUid(),redoChange.data_object_id())){
+               return null;
+           }
+       }
         if (changeCode == ChangeCode.INSERT){
             return insert(record,recordBytes);
         }else if (changeCode == ChangeCode.DELETE){
             return delete(record,recordBytes);
         }else if (changeCode == ChangeCode.UPDATE){
             return update(record,recordBytes);
+        }else if (changeCode == ChangeCode.INSERT_MULTI){
+            return insertMulti(record,recordBytes);
         }else if (changeCode == ChangeCode.DDL){
             return ddl(record,recordBytes);
         }else if (changeCode == ChangeCode.COMMIT){
             return commit(record,recordBytes);
+        }else if (changeCode == ChangeCode.LOB_REDO){
+            return lobRedo(record,recordBytes);
+        }else if (changeCode == ChangeCode.LLB){
+            return llb(record,recordBytes);
         }
 
-
-
         return null;
+    }
+
+    private static ConvertRedoRecord llb(RedoRecord record, byte[] recordBytes) {
+        RedoChange ddlChange =  record.change();
+        if (ddlChange == null){
+            return null;
+        }
+//0x0005.0004.0282.0000
+        int[][] afterVectors = ddlChange.vectors();
+        int xid0 =  BinaryUtil.getU16(recordBytes,afterVectors[2][1]+4);
+        int xid1 =BinaryUtil.getU16(recordBytes,afterVectors[2][1]+6);
+        int xid2 = BinaryUtil.getU16(recordBytes,afterVectors[2][1]+8);
+        int xid3 = BinaryUtil.getU16(recordBytes,afterVectors[2][1]+10);
+        Xid xid = new Xid(xid0, xid1, xid2, xid3);
+        int colId = BinaryUtil.getU16(recordBytes, afterVectors[2][1] + 0x16);
+        int lSize = BinaryUtil.getU32(recordBytes, afterVectors[2][1] + 0x20);
+        ConvertLlbRedoRecord convertLlbRedoRecord = new ConvertLlbRedoRecord();
+        convertLlbRedoRecord.setObj(ddlChange.data_object_id());
+        convertLlbRedoRecord.setXid(xid);
+        convertLlbRedoRecord.setLSize(lSize);
+        convertLlbRedoRecord.setColumnId(colId);
+        convertLlbRedoRecord.setChangeCode(ChangeCode.LLB);
+        if (ddlChange.data_object_id() == 73183){
+            System.out.println();
+        }
+        return convertLlbRedoRecord;
+    }
+
+    private static ConvertRedoRecord lobRedo(RedoRecord record, byte[] recordBytes) {
+        RedoChange ddlChange =  record.change();
+        if (ddlChange == null){
+            return null;
+        }
+        int[][] afterVectors = ddlChange.vectors();
+        int xid1 = BinaryUtil.getU16(recordBytes,afterVectors[0][1]);
+        int cls = ddlChange.changeHeader().cls();
+        int xid2 = BinaryUtil.getU16(recordBytes,afterVectors[0][1]+4);
+        int xid3 = BinaryUtil.getU16(recordBytes,afterVectors[0][1]+6);
+        final short xid0 = (short) (cls >= 0x0F ? (cls - 0x0F) / 2 : -1);
+        Xid xid = new Xid(xid0, xid1, xid2, xid3);
+        return ConvertRedoRecord.builder().scn(record.scn())
+                .blk(record.blockNumber())
+                .offset(record.offset())
+                .seq(record.sequence())
+                .conUid(record.conUid())
+                .xid(xid)
+                .changeCode(ddlChange.changeCode())
+                .build();
     }
 
     private static ConvertRedoRecord commit(RedoRecord record, byte[] recordBytes) {
@@ -67,9 +115,14 @@ public class RecordConvertor {
         int xid3 = BinaryUtil.getU16(recordBytes,afterVectors[0][1]+6);
         final short xid0 = (short) (cls >= 0x0F ? (cls - 0x0F) / 2 : -1);
         Xid xid = new Xid(xid0, xid1, xid2, xid3);
-
-        return new ConvertRedoRecord(record.scn(), record.blockNumber(), record.offset(), record.sequence(),
-                record.conUid(), xid, null, null, null, 0,null,null,null, ddlChange.changeCode(), null);
+        return ConvertRedoRecord.builder().scn(record.scn())
+                .blk(record.blockNumber())
+                .offset(record.offset())
+                .seq(record.sequence())
+                .conUid(record.conUid())
+                .xid(xid)
+                .changeCode(ddlChange.changeCode())
+                .build();
     }
 
     private static ConvertRedoRecord ddl(RedoRecord record, byte[] recordBytes) {
@@ -86,8 +139,15 @@ public class RecordConvertor {
         int[][] vectors = ddlChange.vectors();
         int objId = BinaryUtil.getU32(recordBytes,vectors[0x0B][1]);
         String ddlSql = new String(Arrays.copyOfRange(recordBytes, vectors[7][1], vectors[7][1] + vectors[7][0]-1));
-        return new ConvertRedoRecord(record.scn(), record.blockNumber(), record.offset(), record.sequence(),
-                record.conUid(), null, null, null, null, objId,null,null,null, ddlChange.changeCode(), ddlSql);
+        return ConvertRedoRecord.builder().scn(record.scn())
+                .blk(record.blockNumber())
+                .offset(record.offset())
+                .seq(record.sequence())
+                .conUid(record.conUid())
+                .objId(objId)
+                .changeCode(ddlChange.changeCode())
+                .ddlSql(ddlSql)
+                .build();
     }
 
     private static Xid getXid(int[][] vectors, byte[] recordBytes){
@@ -186,20 +246,22 @@ public class RecordConvertor {
             System.arraycopy(recordBytes,start,data,0,len);
             otherDatas.add(data);
         }
-
-        return new ConvertRedoRecord(
-                record.scn(),
-                record.blockNumber(),
-                record.offset(),
-                record.sequence(),
-                record.conUid(),
-                xid,
-                beforeCols,
-                afterCols,
-                otherCols,
-                objId,
-                afterDatas,beforeDatas,otherDatas,updateChange.changeCode(),null
-        );
+        return ConvertRedoRecord.builder()
+                .scn(record.scn())
+                .blk(record.blockNumber())
+                .offset(record.offset())
+                .seq(record.sequence())
+                .conUid(record.conUid())
+                .xid(xid)
+                .beforeCols(beforeCols)
+                .afterCols(afterCols)
+                .otherCols(otherCols)
+                .objId(objId)
+                .after(afterDatas)
+                .before(beforeDatas)
+                .other(otherDatas)
+                .changeCode(updateChange.changeCode())
+                .build();
     }
 
     private static ConvertRedoRecord delete(RedoRecord record, byte[] recordBytes) {
@@ -235,19 +297,19 @@ public class RecordConvertor {
             System.arraycopy(recordBytes,start,data,0,len);
             beforeDatas.add(data);
         }
-        return new ConvertRedoRecord(
-                record.scn(),
-                record.blockNumber(),
-                record.offset(),
-                record.sequence(),
-                record.conUid(),
-                beforeXid,
-                beforeCols,
-                null,
-                null,
-                objId,
-                null,beforeDatas,null,updateChange.changeCode(),null
-        );
+        return ConvertRedoRecord.builder()
+                .scn(record.scn())
+                .blk(record.blockNumber())
+                .offset(record.offset())
+                .seq(record.sequence())
+                .conUid(record.conUid())
+                .xid(beforeXid)
+                .beforeCols(beforeCols)
+                .objId(objId)
+                .before(beforeDatas)
+                .other(null)
+                .changeCode(updateChange.changeCode())
+                .build();
     }
 
     private static ConvertRedoRecord insert(RedoRecord record, byte[] recordBytes) {
@@ -281,19 +343,65 @@ public class RecordConvertor {
             System.arraycopy(recordBytes,start,data,0,len);
             datas.add(data);
         }
+        return ConvertRedoRecord.builder()
+                .scn(record.scn())
+                .blk(record.blockNumber())
+                .offset(record.offset())
+                .seq(record.sequence())
+                .conUid(record.conUid())
+                .xid(xid)
+                .afterCols(cols)
+                .objId(objId)
+                .after(datas)
+                .changeCode(redoChange.changeCode())
+                .build();
+    }
 
-        return new ConvertRedoRecord(
-                record.scn(),
-                record.blockNumber(),
-                record.offset(),
-                record.sequence(),
-                record.conUid(),
-                xid,
-                null,
-                cols,
-                null,
-                objId,
-                datas,null,null,redoChange.changeCode(),null
-        );
+    private static ConvertRedoRecord insertMulti(RedoRecord record, byte[] recordBytes) {
+        RedoChange redoChange = null;
+        for(RedoChange change : record.changes()){
+            if (change.changeCode() == ChangeCode.INSERT_MULTI){
+                redoChange = change;
+            }
+        }
+        int objId = redoChange.data_object_id();
+        // 73291
+        int[][] vectors = redoChange.vectors();
+        // xid
+        Xid xid = getXid(vectors,recordBytes);
+        int rowCount = Byte.toUnsignedInt(recordBytes[vectors[1][1] + 0x12]);
+        int startPosition = vectors[3][1];
+        List<List<byte[]>> datas = new ArrayList<>();
+        List<List<Integer>> cols = new ArrayList<>();
+        for (int i = 0; i < rowCount; i++) {
+            startPosition+=2;
+            int colCount = Byte.toUnsignedInt(recordBytes[startPosition]);
+            startPosition++;
+            List<byte[]> data = new ArrayList<>();
+            List<Integer> col = new ArrayList<>();
+            for (int j = 0; j < colCount; j++) {
+                col.add(j+1);
+                int len = Byte.toUnsignedInt(recordBytes[startPosition ]);
+                startPosition++;
+                int start = startPosition;
+                byte[] value = Arrays.copyOfRange(recordBytes, start, start+len);
+                data.add(value);
+                startPosition+=len;
+            }
+            cols.add(col);
+            datas.add(data);
+        }
+        return ConvertRedoRecord.builder()
+                .scn(record.scn())
+                .blk(record.blockNumber())
+                .offset(record.offset())
+                .seq(record.sequence())
+                .conUid(record.conUid())
+                .xid(xid)
+                .afterCols(cols.get(0).stream().mapToInt(Integer::intValue).toArray())
+                .objId(objId)
+                .datas(datas)
+                .changeCode(redoChange.changeCode())
+                .build();
     }
 }

@@ -3,6 +3,7 @@ package com.example.redo.parser;
 import com.example.redo.config.Config;
 import com.example.redo.deserialize.Deserializer;
 import com.example.redo.deserialize.RBA;
+import com.example.redo.metadata.Checker;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -23,9 +24,12 @@ public class RedoMiner {
                 "  and  L.THREAD#=1\n" +
                 "  and  F.STATUS is null\n" +
                 "  and  rownum = 1";
-    public RedoMiner(Config config, Deserializer deserializer) {
-        this.redoParser = new RedoParser(0, deserializer);
+    private Checker checker;
+
+    public RedoMiner(Config config, Deserializer deserializer, Checker checker) {
+        this.redoParser = new RedoParser(0, deserializer,checker);
         this.config = config;
+        this.checker = checker;
     }
 
     private void initConnection() throws SQLException {
@@ -69,7 +73,7 @@ public class RedoMiner {
             throw new RuntimeException("查询当前日志文件失败");
         }else {
             String member = resultSet.getString("MEMBER");
-            member = member.replace("/opt/oracle","D:\\AI-project\\code2\\test");
+            member = "D:\\AI-project\\code2\\redo03.log";
             return new CurrentRedo(
                 resultSet.getLong("CURRENT_SCN"),
                 resultSet.getInt("SEQUENCE#"),

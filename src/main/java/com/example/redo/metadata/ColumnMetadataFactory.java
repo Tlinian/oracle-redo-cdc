@@ -6,6 +6,10 @@ public class ColumnMetadataFactory {
             return new NumberColumnMeta(name, type);
         }else if (type.startsWith("VARCHAR2")) {
             return new VarcharColumnMeta(name, type);
+        }else if (type.startsWith("CLOB")) {
+            return new VarcharColumnMeta(name, type);
+        }else if (type.startsWith("BLOB")) {
+            return new VarcharColumnMeta(name, type);
         }
         throw new UnsupportedOperationException("不支持的列类型: " + type);
     }
