@@ -131,6 +131,7 @@ public class RedoParser {
                             if (xidOracleTranctionMap.containsKey(convert.getXid())){
                                 OracleTranction oracleTranction = xidOracleTranctionMap.get(convert.getXid());
                                 if (convert.getChangeCode() == ChangeCode.COMMIT){
+                                    oracleTranction.getRedoChanges().add(convert);
                                     oracleTranction.convertRedoChanges().forEach(redoChange -> {
                                         deserializer.processRecord(redoChange);
                                     });
@@ -193,6 +194,7 @@ public class RedoParser {
                             if (xidOracleTranctionMap.containsKey(convert.getXid())){
                                 OracleTranction oracleTranction = xidOracleTranctionMap.get(convert.getXid());
                                 if (convert.getChangeCode() == ChangeCode.COMMIT){
+                                    oracleTranction.getRedoChanges().add(convert);
                                     oracleTranction.convertRedoChanges().forEach(redoChange -> {
                                         deserializer.processRecord(redoChange);
                                     });

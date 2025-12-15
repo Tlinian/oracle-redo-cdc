@@ -25,10 +25,6 @@ public class InsertMultiDecoration implements  RecordDecoration {
     int objId;
     List<List<byte[]>> datas;
 
-    public long getConUid() {
-        return conUid;
-    }
-
     @Override
     public ChangeCode getChangeCode() {
         return ChangeCode.INSERT;

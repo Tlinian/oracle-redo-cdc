@@ -51,6 +51,9 @@ public class RecordConvertor {
            case INSERT_MULTI -> {
                return InsertMultiDecoration.parse(record,recordBytes);
            }
+           case LOB_KDLIRBIMG -> {
+               return LobKdlirbimgDecoration.parse(record,recordBytes);
+           }
            default -> {
                throw new SQLException("Unknown change code: " + changeCode);
            }

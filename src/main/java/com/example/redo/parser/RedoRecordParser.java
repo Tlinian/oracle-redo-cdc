@@ -51,8 +51,7 @@ public class RedoRecordParser {
         }
 
         if (hasChange) {
-            RedoRecord redoRecord = parseRedoChanges(recordBytes,header,length,headerLength, vld,scn,subScn,conUid);
-            return redoRecord;
+            return parseRedoChanges(recordBytes,header,length,headerLength, vld,scn,subScn,conUid);
         }else {
             return new RedoRecord(header.blockNumber(),header.sequence(),header.offset(),
                     length,headerLength, vld,scn,subScn,conUid,new ArrayList<>(),null);
@@ -117,7 +116,18 @@ public class RedoRecordParser {
                     changes.add(redoChange);
                     offset += redoChange.changeLength();
                     change = redoChange;
-                }  case LOB_UINDO_REDO -> {
+                } case LOB_KDLIRBIMG -> {
+                    RedoChange redoChange = parseRedoChange(recordBytes, offset,ChangeCode.LOB_KDLIRBIMG);
+                    int[][] vectors = redoChange.vectors();
+                    if (vectors.length > 4){
+                        if (recordBytes[vectors[4][1]] == 9){
+                            redoChange.setDataObjectId(BinaryUtil.getU32(recordBytes, vectors[4][1]+0x0C));
+                        }
+                    }
+                    changes.add(redoChange);
+                    offset += redoChange.changeLength();
+                    change = redoChange;
+                }   case LOB_UINDO_REDO -> {
                     RedoChange redoChange = parseRedoChange(recordBytes, offset,ChangeCode.LOB_UINDO_REDO);
                     changes.add(redoChange);
                     offset += redoChange.changeLength();

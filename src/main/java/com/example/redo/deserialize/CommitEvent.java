@@ -3,11 +3,12 @@ package com.example.redo.deserialize;
 import com.example.redo.model.Xid;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.ToString;
 
 @Getter
 @Builder
+@ToString
 public class CommitEvent implements RedoEvent{
-    private String sql;
     private long scn;
     private long commitScn;
     private Xid xid;

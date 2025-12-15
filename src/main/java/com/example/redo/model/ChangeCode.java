@@ -18,6 +18,7 @@ public enum ChangeCode {
     COMMIT((short) 0x0504),
     DDL((short) 0x1801),
     LOB_REDO((short) 0x1A02),
+    LOB_KDLIRBIMG((short) 0x1A06),
     LOB_UINDO_REDO((short) 0x1A01),
     LOAD_LOB((short) 0x1A06),
     UNKNOWN((short) 0);
