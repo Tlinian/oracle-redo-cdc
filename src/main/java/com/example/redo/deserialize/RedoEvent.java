@@ -1,13 +1,13 @@
 package com.example.redo.deserialize;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
 
-@AllArgsConstructor
-@Getter
-public abstract class RedoEvent {
-        private long scn;
-        private long commitScn;
-        private EventType type;
+import com.example.redo.model.Xid;
 
+public interface RedoEvent {
+
+        long getScn();
+        long getCommitScn();
+        EventType getEventType();
+
+        Xid getXid();
 }

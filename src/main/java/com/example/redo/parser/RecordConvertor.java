@@ -4,11 +4,11 @@ import com.example.redo.ConvertLlbRedoRecord;
 import com.example.redo.ConvertRedoRecord;
 import com.example.redo.metadata.Checker;
 import com.example.redo.model.ChangeCode;
-import com.example.redo.model.RedoChange;
-import com.example.redo.model.RedoRecord;
+import com.example.redo.model.decoration.*;
+import com.example.redo.model.origin.RedoChange;
+import com.example.redo.model.origin.RedoRecord;
 import com.example.redo.model.Xid;
 import com.example.redo.util.BinaryUtil;
-import oracle.sql.NUMBER;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -16,7 +16,7 @@ import java.util.Arrays;
 import java.util.List;
 
 public class RecordConvertor {
-    public static ConvertRedoRecord convert(RedoRecord record, byte[] recordBytes, Checker checker) throws SQLException {
+    public static RecordDecoration convert(RedoRecord record, byte[] recordBytes, Checker checker) throws SQLException {
         List<RedoChange> changes = record.changes();
         RedoChange redoChange = record.change();
         if (redoChange == null){
@@ -29,25 +29,32 @@ public class RecordConvertor {
                return null;
            }
        }
-        if (changeCode == ChangeCode.INSERT){
-            return insert(record,recordBytes);
-        }else if (changeCode == ChangeCode.DELETE){
-            return delete(record,recordBytes);
-        }else if (changeCode == ChangeCode.UPDATE){
-            return update(record,recordBytes);
-        }else if (changeCode == ChangeCode.INSERT_MULTI){
-            return insertMulti(record,recordBytes);
-        }else if (changeCode == ChangeCode.DDL){
-            return ddl(record,recordBytes);
-        }else if (changeCode == ChangeCode.COMMIT){
-            return commit(record,recordBytes);
-        }else if (changeCode == ChangeCode.LOB_REDO){
-            return lobRedo(record,recordBytes);
-        }else if (changeCode == ChangeCode.LLB){
-            return llb(record,recordBytes);
-        }
-
-        return null;
+       switch (changeCode){
+           case INSERT -> {
+               return InsertDecoration.parse(record,recordBytes);
+           }
+           case DELETE -> {
+               return DeleteDecoration.parse(record,recordBytes);
+           }
+           case UPDATE -> {
+               return UpdateDecoration.parse(record,recordBytes);
+           }
+           case COMMIT -> {
+               return CommitDecoration.parse(record,recordBytes);
+           }
+           case LLB -> {
+               return LlbDecoration.parse(record,recordBytes);
+           }
+           case DDL ->  {
+               return DdlDecoration.parse(record,recordBytes);
+           }
+           case INSERT_MULTI -> {
+               return InsertMultiDecoration.parse(record,recordBytes);
+           }
+           default -> {
+               throw new SQLException("Unknown change code: " + changeCode);
+           }
+       }
     }
 
     private static ConvertRedoRecord llb(RedoRecord record, byte[] recordBytes) {

@@ -7,6 +7,7 @@ import com.example.redo.metadata.MetadataManager;
 import com.example.redo.metadata.TableId;
 import com.example.redo.metadata.TableMetadata;
 import com.example.redo.model.ChangeCode;
+import com.example.redo.model.decoration.*;
 
 import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -22,43 +23,69 @@ public class RecordDeserializer implements Deserializer {
         this.redoEvents = redoEvents;
     }
 
-    public void processRecord(ConvertRedoRecord record) {
+    public void processRecord(RecordDecoration record) {
         if (record == null) {
             return;
         }
-        if (!metadataManager.getChecker().check(record.getConUid(), record.getObjId())) {
-            return;
-        }
-        RedoEvent e = deserializeDmlRecord(record);
-        if (e != null) {
-            try {
-                redoEvents.put(e);
-            } catch (InterruptedException ex) {
-                throw new RuntimeException(ex);
+        if (record instanceof DeleteDecoration decoration){
+            if (!metadataManager.getChecker().check(record.getConUid(), decoration.getObjId())) {
+                return;
             }
+        }else if (record instanceof InsertDecoration decoration){
+            if (!metadataManager.getChecker().check(record.getConUid(), decoration.getObjId())) {
+                return;
+            }
+        }else if (record instanceof UpdateDecoration decoration){
+            if (!metadataManager.getChecker().check(record.getConUid(), decoration.getObjId())) {
+                return;
+            }
+        }
+        List<RedoEvent> e = deserializeDmlRecord(record);
+        if (e != null) {
+            redoEvents.addAll(e);
         }
     }
 
-    public RedoEvent deserializeDmlRecord(ConvertRedoRecord redoRecord) {
+    public List<RedoEvent> deserializeDmlRecord(RecordDecoration redoRecord) {
         switch (redoRecord.getChangeCode()) {
             case DDL:
-                return new DdlEvent(redoRecord.getScn(), redoRecord.getScn(), EventType.DDL, redoRecord.getDdlSql());
+                DdlEvent ddlEvent = DdlEvent.builder().scn(redoRecord.getScn()).commitScn(redoRecord.getScn()).eventType(EventType.DDL).sql(((DdlDecoration) redoRecord).getSql()).xid(redoRecord.getXid()).build();
+                return Collections.singletonList(ddlEvent);
             case COMMIT:
-                return new CommitEvent(redoRecord.getScn(), redoRecord.getScn());
+                return Collections.singletonList(CommitEvent.builder().commitScn(redoRecord.getScn()).scn(redoRecord.getScn()).xid(redoRecord.getXid()).build());
             case INSERT:
-                return insertRecord(redoRecord);
+                return insertRecord((InsertDecoration) redoRecord);
             case INSERT_MULTI:
-                return insertMultiRecord(redoRecord);
+                return insertMultiRecord((InsertMultiDecoration) redoRecord);
             case DELETE:
-                return deleteRecord(redoRecord);
+                return deleteRecord((DeleteDecoration) redoRecord);
             case UPDATE:
-                return updateRecord(redoRecord);
+                return updateRecord((UpdateDecoration) redoRecord);
             default:
                 return null;
         }
     }
 
-    public RedoEvent insertMultiRecord(ConvertRedoRecord record) {
+    public List<RedoEvent> insertMultiRecord(InsertMultiDecoration record) {
+        List<List<byte[]>> datas = record.getDatas();
+        int[] afterCols = record.getAfterCols();
+        TableId tableId = metadataManager.getTableIdMap().get(record.getObjId());
+        TableMetadata tableMetadata = metadataManager.getTableMetadataMap().get(tableId);
+        List<RedoEvent> insertEvents = new ArrayList<>();
+        for (int i = 0; i < datas.size(); i++) {
+            List<Object> afterData = new ArrayList<>();
+            List<byte[]> after = datas.get(i);
+            for (int j = 0; j < after.size(); j++) {
+                afterData.add(tableMetadata.getColumnIdMap().get(afterCols[j]).convertData(after.get(j)));
+            }
+            InsertEvent insertEvent = InsertEvent.builder().scn(record.getScn())
+                    .commitScn(record.getScn()).tableId(tableId).objId(record.getObjId()).afterCols(afterCols).after(afterData).xid(record.getXid()).build();
+            insertEvents.add(insertEvent);
+        }
+        return insertEvents;
+    }
+
+    public List<RedoEvent> insertRecord(InsertDecoration record) {
         List<byte[]> after = record.getAfter();
         int[] afterCols = record.getAfterCols();
         TableId tableId = metadataManager.getTableIdMap().get(record.getObjId());
@@ -67,24 +94,12 @@ public class RecordDeserializer implements Deserializer {
         for (int i = 0; i < after.size(); i++) {
             afterData.add(tableMetadata.getColumnIdMap().get(afterCols[i]).convertData(after.get(i)));
         }
-        return new DmlEvent(record.getScn(), record.getBlk(), record.getOffset(), record.getSeq(), record.getXid(),
-                record.getScn(), EventType.INSERT, tableId, record.getObjId(), null, afterData);
+        InsertEvent insertEvent = InsertEvent.builder().scn(record.getScn())
+                .commitScn(record.getScn()).tableId(tableId).objId(record.getObjId()).afterCols(afterCols).after(afterData).xid(record.getXid()).build();
+        return Collections.singletonList(insertEvent);
     }
 
-    public RedoEvent insertRecord(ConvertRedoRecord record) {
-        List<byte[]> after = record.getAfter();
-        int[] afterCols = record.getAfterCols();
-        TableId tableId = metadataManager.getTableIdMap().get(record.getObjId());
-        TableMetadata tableMetadata = metadataManager.getTableMetadataMap().get(tableId);
-        List<Object> afterData = new ArrayList<>();
-        for (int i = 0; i < after.size(); i++) {
-            afterData.add(tableMetadata.getColumnIdMap().get(afterCols[i]).convertData(after.get(i)));
-        }
-        return new DmlEvent(record.getScn(), record.getBlk(), record.getOffset(), record.getSeq(), record.getXid(),
-                record.getScn(), EventType.INSERT, tableId, record.getObjId(), null, afterData);
-    }
-
-    public RedoEvent deleteRecord(ConvertRedoRecord record) {
+    public List<RedoEvent> deleteRecord(DeleteDecoration record) {
         List<byte[]> before = record.getBefore();
         int[] beforeCols = record.getBeforeCols();
         TableId tableId = metadataManager.getTableIdMap().get(record.getObjId());
@@ -93,11 +108,12 @@ public class RecordDeserializer implements Deserializer {
         for (int i = 0; i < before.size(); i++) {
             afterData.add(tableMetadata.getColumnIdMap().get(beforeCols[i]).convertData(before.get(i)));
         }
-        return new DmlEvent(record.getScn(), record.getBlk(), record.getOffset(), record.getSeq(), record.getXid(),
-                record.getScn(), EventType.DELETE, tableId, record.getObjId(), afterData, null);
+        DeleteEvent deleteEvent = DeleteEvent.builder().scn(record.getScn())
+                .commitScn(record.getScn()).tableId(tableId).objId(record.getObjId()).beforeCols(beforeCols).before(afterData).xid(record.getXid()).build();
+        return Collections.singletonList(deleteEvent);
     }
 
-    public RedoEvent updateRecord(ConvertRedoRecord record) {
+    public List<RedoEvent> updateRecord(UpdateDecoration record) {
         List<byte[]> before = record.getBefore();
         int[] beforeCols = record.getBeforeCols();
         TableId tableId = metadataManager.getTableIdMap().get(record.getObjId());
@@ -121,7 +137,8 @@ public class RecordDeserializer implements Deserializer {
         for (int i = 0; i < after.size(); i++) {
             afterData.add(columnIdMap.get(afterCols[i]).convertData(after.get(i)));
         }
-        return new DmlEvent(record.getScn(), record.getBlk(), record.getOffset(), record.getSeq(), record.getXid(),
-                record.getScn(), EventType.UPDATE, tableId, record.getObjId(), Arrays.asList(beforeData.values().toArray()), afterData);
+        UpdateEvent updateEvent = UpdateEvent.builder().scn(record.getScn())
+                .commitScn(record.getScn()).tableId(tableId).objId(record.getObjId()).beforeCols(beforeCols).afterCols(afterCols).before(Arrays.asList(beforeData.values().toArray())).after(afterData).xid(record.getXid()).build();
+        return Collections.singletonList(updateEvent);
     }
 }

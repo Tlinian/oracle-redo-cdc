@@ -5,6 +5,9 @@ import com.example.redo.deserialize.Deserializer;
 import com.example.redo.deserialize.RBA;
 import com.example.redo.metadata.Checker;
 import com.example.redo.model.*;
+import com.example.redo.model.decoration.RecordDecoration;
+import com.example.redo.model.origin.RedoChange;
+import com.example.redo.model.origin.RedoRecord;
 import com.example.redo.util.BinaryUtil;
 import lombok.Getter;
 
@@ -123,7 +126,7 @@ public class RedoParser {
                     }else {
                         System.arraycopy(block, BlockHeader.BLOCK_HEADER_SIZE,lastRecord, copiedRecordLen, needCopyLen);
                         RedoRecord redoRecord = RedoRecordParser.parseRedoRecord(header, lastRecord);
-                        ConvertRedoRecord convert = RecordConvertor.convert(redoRecord, lastRecord,checker);
+                        RecordDecoration convert = RecordConvertor.convert(redoRecord, lastRecord,checker);
                         if (convert != null) {
                             if (xidOracleTranctionMap.containsKey(convert.getXid())){
                                 OracleTranction oracleTranction = xidOracleTranctionMap.get(convert.getXid());
@@ -185,7 +188,7 @@ public class RedoParser {
                         byte[] record = new byte[recordLen];
                         System.arraycopy(block, cursor, record, 0, recordLen);
                         RedoRecord redoRecord = RedoRecordParser.parseRedoRecord(header,record);
-                        ConvertRedoRecord convert = RecordConvertor.convert(redoRecord, record,checker);
+                        RecordDecoration convert = RecordConvertor.convert(redoRecord, record,checker);
                         if (convert != null) {
                             if (xidOracleTranctionMap.containsKey(convert.getXid())){
                                 OracleTranction oracleTranction = xidOracleTranctionMap.get(convert.getXid());

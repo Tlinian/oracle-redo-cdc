@@ -1,6 +1,6 @@
-package com.example.redo.model;
+package com.example.redo.model.origin;
 
-import java.util.List;
+import com.example.redo.model.ChangeCode;
 
 public record RedoChange(
         ChangeHeader changeHeader,

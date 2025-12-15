@@ -1,8 +1,6 @@
-package com.example.redo.model;
+package com.example.redo.model.origin;
 
 import com.example.redo.util.BinaryUtil;
-
-import java.nio.ByteBuffer;
 
 public record ChangeHeader(int layerNumber,
                            int code,

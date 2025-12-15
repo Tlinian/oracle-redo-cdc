@@ -1,12 +1,20 @@
 package com.example.redo.deserialize;
 
-public class DdlEvent extends RedoEvent{
+import com.example.redo.model.Xid;
+import lombok.Builder;
+import lombok.Getter;
+
+@Builder
+@Getter
+public class DdlEvent implements RedoEvent{
     private String sql;
-    public DdlEvent(long scn, long commitScn, EventType type, String sql) {
-        super(scn, commitScn, type);
-        this.sql = sql;
-    }
-    public String getSql() {
-        return sql;
+    private long scn;
+    private long commitScn;
+    private EventType eventType;
+    private Xid xid;
+
+    @Override
+    public EventType getEventType() {
+        return EventType.DDL;
     }
 }

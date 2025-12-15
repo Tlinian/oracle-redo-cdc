@@ -1,15 +1,16 @@
 package com.example.redo.parser;
 
 import com.example.redo.model.*;
+import com.example.redo.model.origin.ChangeHeader;
+import com.example.redo.model.origin.RedoChange;
+import com.example.redo.model.origin.RedoRecord;
 import com.example.redo.util.BinaryUtil;
-import com.fasterxml.jackson.databind.DeserializationConfig;
 import oracle.sql.NUMBER;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 
 public class RedoRecordParser {
 
