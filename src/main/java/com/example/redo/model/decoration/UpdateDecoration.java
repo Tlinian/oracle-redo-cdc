@@ -60,7 +60,7 @@ public class UpdateDecoration implements  RecordDecoration {
         // after data start with 2
         int[][] afterVectors = updateChange.vectors();
 
-        Xid xid = getXid(afterVectors, recordBytes);
+        Xid xid = getXid(undoChange.vectors(), recordBytes);
         int vectorLength = afterVectors[2][0];
         int vectorCurrent = afterVectors[2][1];
         byte[] afterColsBytes = new byte[vectorLength];

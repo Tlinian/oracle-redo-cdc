@@ -95,6 +95,12 @@ public class RedoRecordParser {
                     offset += redoChange.changeLength();
                     change = redoChange;
                 }
+                case UPDATE_MULTI ->{
+                    RedoChange redoChange = parseRedoChange(recordBytes, offset,ChangeCode.UPDATE_MULTI);
+                    changes.add(redoChange);
+                    offset += redoChange.changeLength();
+                    change = redoChange;
+                }
                 case UNDO_SEM ->{
                     RedoChange redoChange = parseRedoChange(recordBytes, offset,ChangeCode.UNDO_SEM);
                     changes.add(redoChange);
@@ -151,6 +157,9 @@ public class RedoRecordParser {
                 case UNKNOWN -> {
                     RedoChange redoChange = parseRedoChange(recordBytes, offset,ChangeCode.UNKNOWN);
                     changes.add(redoChange);
+                    if (redoChange.data_object_id() == 73169 || redoChange.data_object_id() == 73168){
+                        System.out.println();;
+                    }
                     offset += redoChange.changeLength();
                 }
                 // Byte.toUnsignedInt(recordBytes[vectors[1][1] + 0x12]); =rowcount 3
@@ -161,7 +170,13 @@ public class RedoRecordParser {
 
             }
         }
+        for (int i = 0; i < changes.size(); i++) {
+            RedoChange redoChange = changes.get(i);
+            if (redoChange.data_object_id() == 73169 || redoChange.data_object_id() == 73168){
+                System.out.println();;
+            }
 
+        }
         return new RedoRecord(header.blockNumber(),header.sequence(),header.offset(),
                 length,headerLength, vld,scn,subScn,conUid,changes,change);
     }

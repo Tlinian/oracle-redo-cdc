@@ -74,8 +74,14 @@ public class OracleTranction {
             if (record2 instanceof LlbDecoration llbRedoRecord) {
                 int columnId = llbRedoRecord.getColumnId();
                 int lSize = llbRedoRecord.getLSize();
-                byte[] bytes = record.getAfter().get(columnId - 1);
-                record.getAfter().set(columnId-1, Arrays.copyOfRange(bytes, bytes.length-lSize,bytes.length));
+                int colIndex = columnId - 1;
+                for (int i = 0; i < record.getAfterCols().length; i++) {
+                    if (record.getAfterCols()[i] == columnId){
+                        colIndex = i;
+                    }
+                }
+                byte[] bytes = record.getAfter().get(colIndex);
+                record.getAfter().set(colIndex, Arrays.copyOfRange(bytes, bytes.length-lSize,bytes.length));
             }
         }
         Set<Integer> columnIdSet = new HashSet<>();
@@ -85,8 +91,9 @@ public class OracleTranction {
                 int lSize = lobRedoRecord.getLobData().length;
                 if (!columnIdSet.contains(columnId)){
                     record.getAfter().set(columnId-1, lobRedoRecord.getLobData());
-                }else {
                     columnIdSet.add(columnId);
+                }else {
+
                     byte[] bytes = record.getAfter().get(columnId - 1);
                     byte[] lobData = lobRedoRecord.getLobData();
                     byte[] newBytes = new byte[bytes.length + lobData.length];
