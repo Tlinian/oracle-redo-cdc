@@ -11,12 +11,17 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class RedoClient {
     private Config config;
     private MetadataManager  metadataManager;
     private ArrayBlockingQueue<RedoEvent> redoEventList;
     private RecordDeserializer recordDeserializer;
+    ExecutorService executorService = Executors.newSingleThreadExecutor();
+
     public RedoClient(Config config) {
         this.config = config;
         this.metadataManager = new MetadataManager(config);
@@ -30,8 +35,22 @@ public class RedoClient {
 
     public void start() {
         String redoFileName = config.getRedoFileName();
-        RedoMiner redoMiner = new RedoMiner(config, recordDeserializer,metadataManager.getChecker());
-        redoMiner.parseRedoFile();
+        executorService.submit(() ->{
+            RedoMiner redoMiner = new RedoMiner(config, recordDeserializer,metadataManager.getChecker());
+            redoMiner.parseRedoFile();
+        });
+    }
+
+    public void stop() {
+        executorService.shutdownNow();
+    }
+
+    public RedoEvent redoEvent() {
+        try {
+            return redoEventList.poll(3000, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public RedoEvent getRedoEvent() {
