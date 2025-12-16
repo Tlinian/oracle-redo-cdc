@@ -68,7 +68,7 @@ public class UpdateDecoration implements  RecordDecoration {
         int colCount = afterColsBytes.length/2;
         int [] afterCols = new int[colCount];
         for (int i = 0; i < afterColsBytes.length; i+=2) {
-            afterCols[i/2] = (Byte.toUnsignedInt(afterColsBytes[i+1]) << 8) | Byte.toUnsignedInt(afterColsBytes[i])+1;
+            afterCols[i/2] = (Byte.toUnsignedInt(afterColsBytes[i+1]) << 8) | Byte.toUnsignedInt(afterColsBytes[i]);
         }
         List<byte[]> afterDatas = new ArrayList<>();
         int afterStartIndex = 3;
@@ -91,7 +91,7 @@ public class UpdateDecoration implements  RecordDecoration {
         int colCountBefore = beforeColsBytes.length/2;
         int [] beforeCols = new int[colCountBefore];
         for (int i = 0; i < beforeColsBytes.length; i+=2) {
-            beforeCols[i/2] = (Byte.toUnsignedInt(beforeColsBytes[i+1]) << 8) | Byte.toUnsignedInt(beforeColsBytes[i])+1;
+            beforeCols[i/2] = (Byte.toUnsignedInt(beforeColsBytes[i+1]) << 8) | Byte.toUnsignedInt(beforeColsBytes[i]);
         }
         List<byte[]> beforeDatas = new ArrayList<>();
         int beforeStartDataIndex = beforeStartIndex+1;
@@ -106,29 +106,33 @@ public class UpdateDecoration implements  RecordDecoration {
 
         // before data start with , 其他列数据，其中一个向量不知道是是啥。
         int beforeOtherStartIndex = beforeStartDataIndex + colCountBefore+1;
-
-        int vectorLengthOther = beforeVectors[beforeOtherStartIndex][0];
-        int vectorCurrentOther = beforeVectors[beforeOtherStartIndex][1];
-        byte[] otherColsBytes = new byte[vectorLengthOther];
-        System.arraycopy(recordBytes,vectorCurrentOther,otherColsBytes,0,vectorLengthOther);
-        int colCountOther = otherColsBytes.length/2;
-        int [] otherCols = new int[colCountOther];
-        // 此处列索引要-1
-        for (int i = 0; i < otherColsBytes.length; i+=2) {
-            otherCols[i/2] = (Byte.toUnsignedInt(otherColsBytes[i+1]) << 8) | Byte.toUnsignedInt(otherColsBytes[i]);
-        }
-
+        int[] otherCols = new int[0];
         List<byte[]> otherDatas = new ArrayList<>();
-        // 向量要间隔1
-        int otherStartDataIndex = beforeOtherStartIndex+2;
-        // 接下来是字段值的长度
-        for (int i = otherStartDataIndex; i < otherStartDataIndex + colCountOther; i++) {
-            int len = beforeVectors[i][0];
-            int start = beforeVectors[i][1];
-            byte[] data = new byte[len];
-            System.arraycopy(recordBytes,start,data,0,len);
-            otherDatas.add(data);
-        }
+
+       if (beforeOtherStartIndex < beforeVectors.length){
+           int vectorLengthOther = beforeVectors[beforeOtherStartIndex][0];
+           int vectorCurrentOther = beforeVectors[beforeOtherStartIndex][1];
+           byte[] otherColsBytes = new byte[vectorLengthOther];
+           System.arraycopy(recordBytes,vectorCurrentOther,otherColsBytes,0,vectorLengthOther);
+           int colCountOther = otherColsBytes.length/2;
+           otherCols = new int[colCountOther];
+           // 此处列索引要-1
+           for (int i = 0; i < otherColsBytes.length; i+=2) {
+               otherCols[i/2] = (Byte.toUnsignedInt(otherColsBytes[i+1]) << 8) | Byte.toUnsignedInt(otherColsBytes[i])-1;
+           }
+
+           otherDatas = new ArrayList<>();
+           // 向量要间隔1
+           int otherStartDataIndex = beforeOtherStartIndex+2;
+           // 接下来是字段值的长度
+           for (int i = otherStartDataIndex; i < otherStartDataIndex + colCountOther; i++) {
+               int len = beforeVectors[i][0];
+               int start = beforeVectors[i][1];
+               byte[] data = new byte[len];
+               System.arraycopy(recordBytes,start,data,0,len);
+               otherDatas.add(data);
+           }
+       }
         return UpdateDecoration.builder()
                 .scn(record.scn())
                 .rba(new RBA(record.sequence(), record.offset(), record.blockNumber()))

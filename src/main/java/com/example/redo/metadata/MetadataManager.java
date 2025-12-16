@@ -2,6 +2,7 @@ package com.example.redo.metadata;
 
 import com.example.redo.config.Config;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -12,12 +13,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Getter
 public class MetadataManager {
     // URL, USER, PASSWORD
     private static final String URL = "jdbc:oracle:thin:@localhost:1521:ORCLCDB";
     private static final String QUERY_CON_UID = "select CON_ID,CON_UID from V$CONTAINERS where NAME = ?";
-    private static final String QUERY_TABLE_ID = "select O.OBJECT_ID, O.CON_ID, T.OWNER, T.TABLE_NAME, T.DEPENDENCIES, P.PDB_NAME,\n" +
+    private static final String QUERY_TABLE_ID = "select O.OBJECT_ID,O.DATA_OBJECT_ID,O.CON_ID, T.OWNER, T.TABLE_NAME, T.DEPENDENCIES, P.PDB_NAME,\n" +
             "       decode(O.OBJECT_TYPE, 'TABLE', 'Y', 'N') IS_TABLE,\n" +
             "       decode(O.OBJECT_TYPE, 'TABLE', O.OBJECT_ID,\n" +
             "              (select PT.OBJECT_ID\n" +
@@ -57,14 +59,15 @@ public class MetadataManager {
         try {
             connection = DriverManager.getConnection(config.getUrl(), config.getUser(), config.getPassword());
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
         initConUid();
         tableIdMap = initTableIdMapFromSchema();
-        tableIdMap.putAll(initTableIdMapFromSchema());
+//        tableIdMap.putAll(initTableIdMapFromSchema());
         tableMetadataMap = initMetadataMapFromSchema();
-        tableIdMap.putAll(initTableIdMapFromSchema());
-
+//        tableIdMap.putAll(initTableIdMapFromSchema());
+            log.info("tableIdMap: {}", tableIdMap);
+            log.info("tableMetadataMap: {}", tableMetadataMap);
         checker = new Checker(conUid, objId -> tableIdMap.containsKey(objId));
     }
 
@@ -91,9 +94,11 @@ public class MetadataManager {
             var resultSet = statement.executeQuery();
             while (resultSet.next()) {
                 int tableId = resultSet.getInt("OBJECT_ID");
+                int dataObjectId = resultSet.getInt("DATA_OBJECT_ID");
                 String tableName = resultSet.getString("TABLE_NAME");
                 String schema = resultSet.getString("OWNER");
                 tableIdMap.put(tableId, new TableId(tableName, schema));
+                tableIdMap.put(dataObjectId, new TableId(tableName, schema));
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);

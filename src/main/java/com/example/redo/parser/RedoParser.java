@@ -69,11 +69,13 @@ public class RedoParser {
     private final int recordLimit;
     private final Checker checker;
     private Map<Xid,OracleTranction> xidOracleTranctionMap = new HashMap<>();
+    private long startScn;
 
-    public RedoParser(int recordLimit, Deserializer deserializer,Checker checker) {
+    public RedoParser(int recordLimit, Deserializer deserializer,Checker checker, long startScn) {
         this.recordLimit = recordLimit;
         this.deserializer = deserializer;
         this.checker = checker;
+        this.startScn = startScn;
     }
 
     private byte[] lastRecord ;
@@ -106,7 +108,7 @@ public class RedoParser {
                 byte[] block = readBlock(channel, pos, blockSize);
                 BlockHeader header = BlockHeader.parseBlockHeader(block);
 
-                if (blockIndex < 2||(dba!=null&&blockIndex < dba.getBlk())) { // block0 和 block1 只读取头信息，不解析记录
+                if (blockIndex < 2||(dba!=null&&header.sequence() == dba.getSeq()&&blockIndex < dba.getBlk())) { // block0 和 block1 只读取头信息，不解析记录
                     seq = Math.toIntExact(header.sequence());
                     continue;
                 }else {
@@ -125,30 +127,8 @@ public class RedoParser {
                         continue;
                     }else {
                         System.arraycopy(block, BlockHeader.BLOCK_HEADER_SIZE,lastRecord, copiedRecordLen, needCopyLen);
-                        RedoRecord redoRecord = RedoRecordParser.parseRedoRecord(header, lastRecord);
-                        RecordDecoration convert = RecordConvertor.convert(redoRecord, lastRecord,checker);
-                        if (convert != null) {
-                            if (xidOracleTranctionMap.containsKey(convert.getXid())){
-                                OracleTranction oracleTranction = xidOracleTranctionMap.get(convert.getXid());
-                                if (convert.getChangeCode() == ChangeCode.COMMIT){
-                                    oracleTranction.getRedoChanges().add(convert);
-                                    oracleTranction.convertRedoChanges().forEach(redoChange -> {
-                                        deserializer.processRecord(redoChange);
-                                    });
-                                }else {
-                                    oracleTranction.getRedoChanges().add(convert);
-                                }
-                            }else {
-                                if (convert.getChangeCode() != ChangeCode.COMMIT){
-                                    OracleTranction oracleTranction = new OracleTranction();
-                                    oracleTranction.getRedoChanges().add(convert);
-                                    oracleTranction.setXid(convert.getXid());
-                                    xidOracleTranctionMap.put(convert.getXid(),oracleTranction);
-                                }
-                            }
-                        }
+                        dealEvent(header, lastRecord);
                         dba = new RBA(header.sequence(), header.offset(), header.blockNumber());
-//                        deserializer.processRecord(convert);
                         if (needCopyLen > blockSize - 24 - 16) {
                             lastRecord = null;
                             copiedRecordLen = 0;
@@ -172,7 +152,6 @@ public class RedoParser {
                 while (cursor + 4 <= blockSize) {
 //                    long recordPos = pos + cursor;
                     int recordLen = BinaryUtil.getU32(block, cursor);
-//                    System.out.println("current block: " + blockIndex + ", record len: " + recordLen);
                     if (recordLen <= 0) { // 简单防护
                         break;
                     }
@@ -188,31 +167,8 @@ public class RedoParser {
 
                         byte[] record = new byte[recordLen];
                         System.arraycopy(block, cursor, record, 0, recordLen);
-                        RedoRecord redoRecord = RedoRecordParser.parseRedoRecord(header,record);
-                        RecordDecoration convert = RecordConvertor.convert(redoRecord, record,checker);
-                        if (convert != null) {
-                            if (xidOracleTranctionMap.containsKey(convert.getXid())){
-                                OracleTranction oracleTranction = xidOracleTranctionMap.get(convert.getXid());
-                                if (convert.getChangeCode() == ChangeCode.COMMIT){
-                                    oracleTranction.getRedoChanges().add(convert);
-                                    oracleTranction.convertRedoChanges().forEach(redoChange -> {
-                                        deserializer.processRecord(redoChange);
-                                    });
-                                }else {
-                                    oracleTranction.getRedoChanges().add(convert);
-                                }
-                            }else {
-                                if (convert.getChangeCode() != ChangeCode.COMMIT){
-                                    OracleTranction oracleTranction = new OracleTranction();
-                                    oracleTranction.getRedoChanges().add(convert);
-                                    oracleTranction.setXid(convert.getXid());
-                                    xidOracleTranctionMap.put(convert.getXid(),oracleTranction);
-                                }
-                            }
-                        }
+                        dealEvent(header, record);
                         dba = new RBA(header.sequence(), header.offset(), header.blockNumber());
-//                        deserializer.processRecord(convert);
-//                        System.out.println("current block: " + blockIndex + ", record len: " + recordLen);
                         if (cursor + recordLen > blockSize - 24) {
                             // 没法满足record
                             break;
@@ -227,9 +183,32 @@ public class RedoParser {
         }
     }
 
-    private int readIntLE(ByteBuffer buffer, long pos) {
-        buffer.position((int) pos);
-        return buffer.getInt();
+    private void dealEvent(BlockHeader header, byte[] lastRecord) throws SQLException {
+        RedoRecord redoRecord = RedoRecordParser.parseRedoRecord(header, lastRecord);
+        RecordDecoration convert = RecordConvertor.convert(redoRecord, lastRecord, checker);
+        if (convert != null) {
+            if (xidOracleTranctionMap.containsKey(convert.getXid())) {
+                OracleTranction oracleTranction = xidOracleTranctionMap.get(convert.getXid());
+                if (convert.getChangeCode() == ChangeCode.COMMIT) {
+                    if (convert.getScn() > startScn) {
+                        oracleTranction.getRedoChanges().add(convert);
+                        oracleTranction.convertRedoChanges().forEach(redoChange -> {
+                            deserializer.processRecord(redoChange);
+                        });
+                    }
+                    xidOracleTranctionMap.remove(convert.getXid());
+                } else {
+                    oracleTranction.getRedoChanges().add(convert);
+                }
+            } else {
+                if (convert.getChangeCode() != ChangeCode.COMMIT) {
+                    OracleTranction oracleTranction = new OracleTranction();
+                    oracleTranction.getRedoChanges().add(convert);
+                    oracleTranction.setXid(convert.getXid());
+                    xidOracleTranctionMap.put(convert.getXid(), oracleTranction);
+                }
+            }
+        }
     }
 
     private int detectBlockSize(FileChannel channel) throws IOException {
@@ -246,131 +225,6 @@ public class RedoParser {
         byte[] block = new byte[blockSize];
         BinaryUtil.readFully(channel, blockStart, ByteBuffer.wrap(block));
         return block;
-    }
-
-    private ChangeCategory categorize(OperationType op) {
-        return switch (op) {
-            case INSERT_ROW, UPDATE_ROW, DELETE_ROW, BEGIN_TX, COMMIT_TX, ROLLBACK_TX, UNDO -> ChangeCategory.DML;
-            case DDL, INDEX_OP, SEGMENT_OP, TABLESPACE_OP -> ChangeCategory.DDL;
-            default -> ChangeCategory.UNKNOWN;
-        };
-    }
-
-    private int readIntLE(FileChannel channel, long position) throws IOException {
-        ByteBuffer buf = BinaryUtil.allocateLE(4);
-        BinaryUtil.readFully(channel, position, buf);
-        return buf.getInt();
-    }
-
-    private int align4(int len) {
-        int rem = len % 4;
-        return rem == 0 ? len : len + (4 - rem);
-    }
-
-
-    private OperationType mapOperation(int layer, int code, int typ) {
-        OperationType mapped = OPCODE_MAP.get(key(layer, code));
-        if (mapped != null) {
-            return mapped;
-        }
-        // typ 5/6 也可能出现在 DDL 分支
-        if (typ == 5 || typ == 6) {
-            return OperationType.DDL;
-        }
-        // fallback：层级推断
-        if (layer == 4) {
-            return OperationType.BLOCK_CLEANOUT;
-        }
-        if (layer == 5) {
-            return OperationType.UNDO;
-        }
-        if (layer == 10) {
-            return OperationType.INDEX_OP;
-        }
-        if (layer == 11) {
-            return OperationType.UNKNOWN;
-        }
-        if (layer == 13 || layer == 14) {
-            return OperationType.SEGMENT_OP;
-        }
-        if (layer == 17 || layer == 22) {
-            return OperationType.TABLESPACE_OP;
-        }
-        if (layer == 24) {
-            return OperationType.DDL;
-        }
-        return OperationType.UNKNOWN;
-    }
-
-    private String key(int layer, int code) {
-        return layer + "." + code;
-    }
-
-    private RowData decodeRow(List<Integer> segmentLengths, List<String> segmentHex) {
-        if (segmentLengths.isEmpty() || segmentHex.isEmpty()) {
-            return null;
-        }
-        String hex = segmentHex.get(0);
-        byte[] bytes = hexStringToBytes(hex);
-        if (bytes.length < 3) {
-            return null;
-        }
-        int flag = Byte.toUnsignedInt(bytes[0]);
-        int lock = Byte.toUnsignedInt(bytes[1]);
-        int columnCount = Byte.toUnsignedInt(bytes[2]);
-        List<ColumnData> columns = new ArrayList<>();
-        int idx = 3;
-        for (int i = 0; i < columnCount && idx < bytes.length; i++) {
-            int len = Byte.toUnsignedInt(bytes[idx++]);
-            if (len == 0xFF) { // 0xFF 通常表示 NULL
-                columns.add(new ColumnData(len, true, "", ""));
-                continue;
-            }
-            if (idx + len > bytes.length) {
-                break;
-            }
-            byte[] col = new byte[len];
-            System.arraycopy(bytes, idx, col, 0, len);
-            idx += len;
-            columns.add(new ColumnData(
-                    len,
-                    false,
-                    bytesToHex(col),
-                    toAscii(col)
-            ));
-        }
-        return new RowData(flag, lock, columnCount, columns);
-    }
-
-    private String bytesToHex(byte[] data) {
-        StringBuilder sb = new StringBuilder(data.length * 2);
-        for (byte b : data) {
-            sb.append(String.format("%02X", b));
-        }
-        return sb.toString();
-    }
-
-    private String toAscii(byte[] data) {
-        StringBuilder sb = new StringBuilder();
-        for (byte b : data) {
-            int v = b & 0xFF;
-            if (v >= 32 && v <= 126) {
-                sb.append((char) v);
-            } else {
-                sb.append('.');
-            }
-        }
-        return sb.toString();
-    }
-
-    private byte[] hexStringToBytes(String hex) {
-        int len = hex.length();
-        byte[] data = new byte[len / 2];
-        for (int i = 0; i < len; i += 2) {
-            data[i / 2] = (byte) ((Character.digit(hex.charAt(i), 16) << 4)
-                    + Character.digit(hex.charAt(i + 1), 16));
-        }
-        return data;
     }
 }
 

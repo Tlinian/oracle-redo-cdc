@@ -1,5 +1,8 @@
 package com.example.redo.metadata;
 
+import lombok.ToString;
+
+@ToString
 public class BinaryColumnMeta extends ColumnMetaBase{
     public BinaryColumnMeta(String name, String type) {
         super(name, type);

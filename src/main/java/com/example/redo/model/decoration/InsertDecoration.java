@@ -61,7 +61,7 @@ public class InsertDecoration implements  RecordDecoration {
         int colCount = Byte.toUnsignedInt(recordBytes[vectors[1][1] + 0x12]);
         int [] cols = new int[colCount];
         for (int i = 0; i < colCount; i++) {
-            cols[i] = i+1;
+            cols[i] = i;
         }
         List<byte[]> datas = new ArrayList<>();
         // 接下来是字段值的长度

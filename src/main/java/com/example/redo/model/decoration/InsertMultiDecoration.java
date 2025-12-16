@@ -66,7 +66,7 @@ public class InsertMultiDecoration implements  RecordDecoration {
             List<byte[]> data = new ArrayList<>();
             List<Integer> col = new ArrayList<>();
             for (int j = 0; j < colCount; j++) {
-                col.add(j+1);
+                col.add(j);
                 int len = Byte.toUnsignedInt(recordBytes[startPosition ]);
                 startPosition++;
                 int start = startPosition;

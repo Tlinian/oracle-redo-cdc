@@ -1,5 +1,7 @@
 package com.example.redo.config;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 
 import java.io.IOException;
@@ -9,6 +11,8 @@ import java.nio.file.Path;
 import java.util.Properties;
 
 @Getter
+@Builder
+@AllArgsConstructor
 public class Config {
     private static final String REDO_FILE_PATH_KEY = "redo.file.path";
     private static final String REDO_FILE_PATH_DEFAULT = "redo.filename";
@@ -19,6 +23,11 @@ public class Config {
     private static final String DATABASE_KEY = "database";
     private static final String SCHEMA_LIST_KEY = "schema.list";
     private static final String MINER_MODE_KEY = "miner.mode";
+    private static final String ORIGIN_PATH_KEY = "origin.path";
+    private static final String TARGET_PATH_KEY = "target.path";
+
+    private String originPath;
+    private String targetPath;
 
     private String redoFileName;
     private long startScn;
@@ -48,6 +57,8 @@ public class Config {
             database = properties.getProperty(DATABASE_KEY);
             schemaList = properties.getProperty(SCHEMA_LIST_KEY);
             minerMode = properties.getProperty(MINER_MODE_KEY);
+            originPath = properties.getProperty(ORIGIN_PATH_KEY);
+            targetPath = properties.getProperty(TARGET_PATH_KEY);
         }
     }
 

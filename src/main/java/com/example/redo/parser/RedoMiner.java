@@ -4,11 +4,13 @@ import com.example.redo.config.Config;
 import com.example.redo.deserialize.Deserializer;
 import com.example.redo.deserialize.RBA;
 import com.example.redo.metadata.Checker;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.nio.file.Path;
 import java.sql.*;
 
+@Slf4j
 public class RedoMiner {
     private RedoParser redoParser;
     private Deserializer deserializer;
@@ -53,15 +55,18 @@ public class RedoMiner {
         while (true) {
             try {
                 CurrentRedo currentRedo = getCurrentRedo();
+                log.info("current redo file: {}", currentRedo.getMember());
                 if (redoParser.getDba() == null) {
 
                     redoParser.parse(Path.of(currentRedo.getMember()));
                 }else {
                     redoParser.parse(Path.of(currentRedo.getMember()), redoParser.getDba());
                 }
+                log.info("redo file {} parsed", currentRedo.getMember());
+                Thread.sleep(3000);
             } catch (SQLException e) {
                 throw new RuntimeException("查询当前日志文件失败", e);
-            } catch (IOException e) {
+            } catch (IOException | InterruptedException e) {
                 throw new RuntimeException(e);
             }
         }
@@ -73,7 +78,7 @@ public class RedoMiner {
             throw new RuntimeException("查询当前日志文件失败");
         }else {
             String member = resultSet.getString("MEMBER");
-            member = "D:\\AI-project\\code2\\redo03.log";
+            member = member.replace(config.getOriginPath(), config.getTargetPath());
             return new CurrentRedo(
                 resultSet.getLong("CURRENT_SCN"),
                 resultSet.getInt("SEQUENCE#"),

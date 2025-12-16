@@ -61,7 +61,7 @@ public class DeleteDecoration implements  RecordDecoration {
         int beforeColCount = Byte.toUnsignedInt(recordBytes[beforeVectors[beforeStartIndex][1] + 0x12]);
         int[] beforeCols = new int[beforeColCount];
         for (int i = 0; i < beforeColCount; i++) {
-            beforeCols[i] = i+1;
+            beforeCols[i] = i;
         }
 
         List<byte[]> beforeDatas = new ArrayList<>();

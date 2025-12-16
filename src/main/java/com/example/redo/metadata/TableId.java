@@ -6,6 +6,7 @@ import lombok.ToString;
 
 @Getter
 @AllArgsConstructor
+@ToString
 public class TableId {
     private String tableName;
     private String schema;
