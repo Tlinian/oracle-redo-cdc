@@ -116,29 +116,59 @@ public class RecordDeserializer implements Deserializer {
     public List<RedoEvent> updateRecord(UpdateDecoration record) {
         List<byte[]> before = record.getBefore();
         int[] beforeCols = record.getBeforeCols();
+        List<Integer> beforeColsList = new ArrayList<>();
+        for (int i = 0; i < beforeCols.length; i++) {
+            beforeColsList.add(beforeCols[i]);
+        }
         TableId tableId = metadataManager.getTableIdMap().get(record.getObjId());
         TableMetadata tableMetadata = metadataManager.getTableMetadataMap().get(tableId);
         Map<Integer, ColumnMeta> columnIdMap = tableMetadata.getColumnIdMap();
-        Map<Integer, Object> beforeData = new HashMap<>();
+        List<Object> beforeData = new ArrayList<>();
         for (int i = 0; i < before.size(); i++) {
+            beforeData.add(columnIdMap.get(beforeCols[i]).convertData(before.get(i)));
+        }
 
-            beforeData.put(beforeCols[i], columnIdMap.get(beforeCols[i]).convertData(before.get(i)));
+
+        List<byte[]> after = record.getAfter();
+        int[] afterCols = record.getAfterCols();
+        List<Integer> afterColsList = new ArrayList<>();
+        for (int i = 0; i < afterCols.length; i++) {
+            afterColsList.add(afterCols[i]);
+        }
+        List<Object> afterData = new ArrayList<>();
+        for (int i = 0; i < after.size(); i++) {
+            afterData.add(columnIdMap.get(afterCols[i]).convertData(after.get(i)));
         }
 
         List<byte[]> other = record.getOther();
         int[] otherCols = record.getOtherCols();
         for (int i = 0; i < other.size(); i++) {
-            beforeData.put(otherCols[i], columnIdMap.get(otherCols[i]).convertData(other.get(i)));
+            int otherCol = otherCols[i];
+            for (int j = 0; j < afterColsList.size(); j++) {
+                if (otherCol < afterColsList.get(j)) {
+                    afterColsList.add(j, otherCol);
+                    afterData.add(j,columnIdMap.get(otherCol).convertData(other.get(i)));
+                    break;
+                }else if (otherCol == afterColsList.get(j)) {
+                    break;
+                }
+            }
+
+            for (int j = 0; j < beforeColsList.size(); j++) {
+                if (otherCol < beforeColsList.get(j)) {
+                    beforeColsList.add(j, otherCol);
+                    beforeData.add(j,columnIdMap.get(otherCol).convertData(other.get(i)));
+                    break;
+                }else if (otherCol == beforeColsList.get(j)) {
+                    break;
+                }
+            }
         }
 
-        List<byte[]> after = record.getAfter();
-        int[] afterCols = record.getAfterCols();
-        List<Object> afterData = new ArrayList<>();
-        for (int i = 0; i < after.size(); i++) {
-            afterData.add(columnIdMap.get(afterCols[i]).convertData(after.get(i)));
-        }
         UpdateEvent updateEvent = UpdateEvent.builder().scn(record.getScn())
-                .commitScn(record.getScn()).tableId(tableId).objId(record.getObjId()).beforeCols(beforeCols).afterCols(afterCols).before(Arrays.asList(beforeData.values().toArray())).after(afterData).xid(record.getXid()).build();
+                .commitScn(record.getScn()).tableId(tableId).objId(record.getObjId())
+                .beforeCols(beforeColsList.toArray(new Integer[0]))
+                .afterCols(afterColsList.toArray(new Integer[0])).before(beforeData).after(afterData).xid(record.getXid()).build();
         return Collections.singletonList(updateEvent);
     }
 }

@@ -12,8 +12,8 @@ import java.util.List;
 @ToString
 @Builder
 public class UpdateEvent extends DmlEvent{
-    int[] afterCols;
-    int[] beforeCols;
+    Integer[] afterCols;
+    Integer[] beforeCols;
     List<Object> after;
     List<Object> before;
     protected Xid xid;

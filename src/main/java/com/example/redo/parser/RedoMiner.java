@@ -29,7 +29,7 @@ public class RedoMiner {
     private Checker checker;
 
     public RedoMiner(Config config, Deserializer deserializer, Checker checker) {
-        this.redoParser = new RedoParser(0, deserializer,checker);
+        this.redoParser = new RedoParser(0, deserializer,checker,config.getStartScn());
         this.config = config;
         this.checker = checker;
     }

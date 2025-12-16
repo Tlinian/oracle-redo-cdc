@@ -117,7 +117,7 @@ public class MetadataManager {
             while (resultSet.next()) {
                 String tableName = resultSet.getString("TABLE_NAME");
                 String schema = resultSet.getString("OWNER");
-                int columnId = resultSet.getInt("COLUMN_ID");
+                int columnId = resultSet.getInt("COLUMN_ID")-1;
                 String columnName = resultSet.getString("COLUMN_NAME");
                 String dataType = resultSet.getString("DATA_TYPE");
                 TableId tableId = new TableId(tableName, schema);

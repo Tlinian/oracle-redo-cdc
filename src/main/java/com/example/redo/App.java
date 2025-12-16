@@ -67,7 +67,7 @@ public class App implements Callable<Integer> {
                 return 2;
             }
 
-            RedoParser parser = new RedoParser(recordLimit, new PrintDeserializer(),null);
+            RedoParser parser = new RedoParser(recordLimit, new PrintDeserializer(),null,0);
             RedoParseResult result = parser.parse(parseFile);
             mapper.writeValue(System.out, result);
         } else if (parsePath != null) {
