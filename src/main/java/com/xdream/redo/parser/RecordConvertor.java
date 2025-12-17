@@ -2,7 +2,6 @@ package com.xdream.redo.parser;
 
 import com.xdream.redo.metadata.Checker;
 import com.xdream.redo.model.ChangeCode;
-import com.example.redo.model.decoration.*;
 import com.xdream.redo.model.decoration.*;
 import com.xdream.redo.model.origin.RedoChange;
 import com.xdream.redo.model.origin.RedoRecord;
