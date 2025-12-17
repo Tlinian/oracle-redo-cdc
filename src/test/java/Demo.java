@@ -1,6 +1,6 @@
-import com.example.redo.RedoClient;
-import com.example.redo.config.Config;
-import com.example.redo.deserialize.RedoEvent;
+import com.xdream.redo.RedoClient;
+import com.xdream.redo.config.Config;
+import com.xdream.redo.deserialize.RedoEvent;
 
 import java.io.IOException;
 import java.nio.file.Path;
