@@ -1,6 +1,5 @@
 package com.example.redo.model.decoration;
 
-import com.example.redo.ConvertRedoRecord;
 import com.example.redo.deserialize.RBA;
 import com.example.redo.model.ChangeCode;
 import com.example.redo.model.Xid;
@@ -56,11 +55,11 @@ public class UpdateDecoration implements  RecordDecoration {
             }
         }
 
-        int objId = updateChange.data_object_id();
+        int objId = updateChange.getDataObjectId();
         // after data start with 2
-        int[][] afterVectors = updateChange.vectors();
+        int[][] afterVectors = updateChange.getVectors();
 
-        Xid xid = getXid(undoChange.vectors(), recordBytes);
+        Xid xid = getXid(undoChange.getVectors(), recordBytes);
         int vectorLength = afterVectors[2][0];
         int vectorCurrent = afterVectors[2][1];
         byte[] afterColsBytes = new byte[vectorLength];
@@ -83,7 +82,7 @@ public class UpdateDecoration implements  RecordDecoration {
 
         // before data start with 4, 镜像数据
         int beforeStartIndex = 4;
-        int[][] beforeVectors = undoChange.vectors();
+        int[][] beforeVectors = undoChange.getVectors();
         int vectorLengthBefore = beforeVectors[beforeStartIndex][0];
         int vectorCurrentBefore = beforeVectors[beforeStartIndex][1];
         byte[] beforeColsBytes = new byte[vectorLengthBefore];

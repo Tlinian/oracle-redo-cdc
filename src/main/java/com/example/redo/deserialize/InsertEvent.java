@@ -13,12 +13,12 @@ import java.util.List;
 @ToString
 @Builder
 public class InsertEvent extends DmlEvent{
+    protected TableId tableId;
     int[] afterCols;
     List<Object> after;
     List<Object> before;
     protected Xid xid;
     protected int objId;
-    protected TableId tableId;
     protected long commitScn;
     protected long scn;
 

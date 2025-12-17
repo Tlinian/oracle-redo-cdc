@@ -12,11 +12,11 @@ import java.util.List;
 @ToString
 @Builder
 public class DeleteEvent extends DmlEvent{
+    protected TableId tableId;
     int[] beforeCols;
     List<Object> before;
     protected Xid xid;
     protected int objId;
-    protected TableId tableId;
     protected long commitScn;
     protected long scn;
 

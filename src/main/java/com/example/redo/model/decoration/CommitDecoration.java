@@ -35,7 +35,7 @@ public class CommitDecoration implements  RecordDecoration {
         if (ddlChange == null){
             return null;
         }
-        int[][] afterVectors = ddlChange.vectors();
+        int[][] afterVectors = ddlChange.getVectors();
         int xid1 = BinaryUtil.getU16(recordBytes,afterVectors[0][1]);
         int cls = ddlChange.changeHeader().cls();
         int xid2 = BinaryUtil.getU16(recordBytes,afterVectors[0][1]+4);

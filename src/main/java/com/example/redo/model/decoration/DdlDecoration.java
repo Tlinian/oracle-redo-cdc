@@ -23,10 +23,11 @@ public class DdlDecoration implements  RecordDecoration {
     int[] beforeCols;
     int objId;
     String sql;
+    int kind;
 
     @Override
     public ChangeCode getChangeCode() {
-        return ChangeCode.DELETE;
+        return ChangeCode.DDL;
     }
 
     public static DdlDecoration parse(RedoRecord record, byte[] recordBytes) {
@@ -39,8 +40,17 @@ public class DdlDecoration implements  RecordDecoration {
         if (ddlChange == null){
             return null;
         }
-
-        int[][] vectors = ddlChange.vectors();
+        int[][] vectors = ddlChange.getVectors();
+        Xid xid = new Xid(
+                BinaryUtil.getU16(recordBytes, vectors[0][1] + 0x04),
+                BinaryUtil.getU16(recordBytes, vectors[0][1] + 0x06),
+                BinaryUtil.getU16(recordBytes, vectors[0][1] + 0x08),
+                BinaryUtil.getU16(recordBytes, vectors[0][1] + 0x0A));
+        int kind = BinaryUtil.getU16(recordBytes, vectors[0][1] + 0x10);
+        if (kind == 0x04 || kind == 0x05 || kind == 0x06 ||
+                kind == 0x08 || kind == 0x09 || kind == 0x0A){
+            return null;
+        }
         int objId = BinaryUtil.getU32(recordBytes,vectors[0x0B][1]);
         String ddlSql = new String(Arrays.copyOfRange(recordBytes, vectors[7][1], vectors[7][1] + vectors[7][0]-1));
         return DdlDecoration.builder().scn(record.scn())
@@ -48,6 +58,8 @@ public class DdlDecoration implements  RecordDecoration {
                 .conUid(record.conUid())
                 .objId(objId)
                 .sql(ddlSql)
+                .kind(kind)
+                .xid(xid)
                 .build();
     }
 }

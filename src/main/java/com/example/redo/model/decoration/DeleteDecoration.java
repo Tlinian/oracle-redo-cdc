@@ -1,6 +1,5 @@
 package com.example.redo.model.decoration;
 
-import com.example.redo.ConvertRedoRecord;
 import com.example.redo.deserialize.RBA;
 import com.example.redo.model.ChangeCode;
 import com.example.redo.model.Xid;
@@ -51,11 +50,13 @@ public class DeleteDecoration implements  RecordDecoration {
                 undoChange = change;
             }
         }
-        int objId = updateChange.data_object_id();
-
+        int objId = updateChange.getDataObjectId();
+        if (undoChange == null) {
+            return null;
+        }
         // after data start with 3
         int beforeStartIndex = 3;
-        int[][] beforeVectors = undoChange.vectors();
+        int[][] beforeVectors = undoChange.getVectors();
 
         Xid beforeXid = getXid(beforeVectors, recordBytes);
         int beforeColCount = Byte.toUnsignedInt(recordBytes[beforeVectors[beforeStartIndex][1] + 0x12]);

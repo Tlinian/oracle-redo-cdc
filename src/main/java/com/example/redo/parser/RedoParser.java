@@ -23,49 +23,6 @@ public class RedoParser {
 
     private static final int DEFAULT_BLOCKSIZE = 512;
     private static final int FH0_BLOCKSIZE_OFFSET = 5 * 4; // unknown0[5] 之后
-    // 依据 change_struct / KTB_struct 常见 opcode 编码，预置映射；可持续扩充
-    private static final Map<String, OperationType> OPCODE_MAP = Map.ofEntries(
-            // Layer 4: Block Cleanout
-            Map.entry("4.1", OperationType.BLOCK_CLEANOUT),
-            // Layer 5: Transaction (KTUXE)
-            Map.entry("5.1", OperationType.UNDO),
-            Map.entry("5.2", OperationType.BEGIN_TX),
-            Map.entry("5.3", OperationType.BEGIN_TX),
-            Map.entry("5.4", OperationType.COMMIT_TX),
-            Map.entry("5.5", OperationType.ROLLBACK_TX),
-            // Layer 9: Data layer meta (常见 DDL 相关)
-            Map.entry("9.1", OperationType.DDL),
-            Map.entry("9.2", OperationType.DDL),
-            // Layer 10: Index (KIX)
-            Map.entry("10.1", OperationType.INDEX_OP), // insert key
-            Map.entry("10.2", OperationType.INDEX_OP), // delete key
-            Map.entry("10.3", OperationType.INDEX_OP), // update key
-            // Layer 11: Table / Row (KDO)
-            Map.entry("11.1", OperationType.INSERT_ROW),
-            Map.entry("11.2", OperationType.INSERT_ROW), // 常见单行插入
-            Map.entry("11.3", OperationType.UPDATE_ROW),
-            Map.entry("11.4", OperationType.UPDATE_ROW),
-            Map.entry("11.5", OperationType.INSERT_ROW), // 部分版本 INSERT piece
-            Map.entry("11.6", OperationType.UPDATE_ROW),
-            Map.entry("11.9", OperationType.UPDATE_ROW),
-            Map.entry("11.10", OperationType.UPDATE_ROW),
-            Map.entry("11.11", OperationType.DELETE_ROW),
-            Map.entry("11.12", OperationType.DELETE_ROW),
-            Map.entry("11.13", OperationType.UPDATE_ROW), // migrate/chain
-            // Layer 13/14: Segment / Extent
-            Map.entry("13.1", OperationType.SEGMENT_OP),
-            Map.entry("13.2", OperationType.SEGMENT_OP),
-            Map.entry("14.1", OperationType.SEGMENT_OP),
-            Map.entry("14.2", OperationType.SEGMENT_OP),
-            // Layer 17/22: Tablespace / LMT
-            Map.entry("17.1", OperationType.TABLESPACE_OP),
-            Map.entry("17.2", OperationType.TABLESPACE_OP),
-            Map.entry("22.1", OperationType.TABLESPACE_OP),
-            // Layer 24: DDL
-            Map.entry("24.1", OperationType.DDL),
-            Map.entry("24.2", OperationType.DDL),
-            Map.entry("24.3", OperationType.DDL)
-    );
     private final int recordLimit;
     private final Checker checker;
     private Map<Xid,OracleTranction> xidOracleTranctionMap = new HashMap<>();
@@ -187,7 +144,9 @@ public class RedoParser {
         RedoRecord redoRecord = RedoRecordParser.parseRedoRecord(header, lastRecord);
         RecordDecoration convert = RecordConvertor.convert(redoRecord, lastRecord, checker);
         if (convert != null) {
-            if (xidOracleTranctionMap.containsKey(convert.getXid())) {
+            if (convert.getChangeCode() == ChangeCode.DDL){
+                deserializer.processRecord(convert);
+            }else if (xidOracleTranctionMap.containsKey(convert.getXid())) {
                 OracleTranction oracleTranction = xidOracleTranctionMap.get(convert.getXid());
                 if (convert.getChangeCode() == ChangeCode.COMMIT) {
                     if (convert.getScn() > startScn) {

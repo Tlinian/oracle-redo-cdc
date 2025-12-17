@@ -62,7 +62,6 @@ public class RedoRecordParser {
                                               BlockHeader header,int length,int headerLength, int vld, long scn, int subScn, int conUid) throws SQLException {
         int offset = headerLength;
         List<RedoChange> changes = new ArrayList<>();
-        ChangeCode changeCode = null;
         RedoChange change = null;
         while (offset < recordBytes.length) {
             byte layer = recordBytes[offset];
@@ -78,14 +77,12 @@ public class RedoRecordParser {
                 case DELETE ->{
                     RedoChange redoChange = parseRedoChange(recordBytes, offset,ChangeCode.DELETE);
                     changes.add(redoChange);
-                    changeCode = redoChange.changeCode();
                     offset += redoChange.changeLength();
                     change = redoChange;
                 }
                 case UPDATE ->{
                     RedoChange redoChange = parseRedoChange(recordBytes, offset,ChangeCode.UPDATE);
                     changes.add(redoChange);
-                    changeCode = ChangeCode.UPDATE;
                     offset += redoChange.changeLength();
                     change = redoChange;
                 }
@@ -124,7 +121,7 @@ public class RedoRecordParser {
                     change = redoChange;
                 } case LOB_KDLIRBIMG -> {
                     RedoChange redoChange = parseRedoChange(recordBytes, offset,ChangeCode.LOB_KDLIRBIMG);
-                    int[][] vectors = redoChange.vectors();
+                    int[][] vectors = redoChange.getVectors();
                     if (vectors.length > 4){
                         if (recordBytes[vectors[4][1]] == 9){
                             redoChange.setDataObjectId(BinaryUtil.getU32(recordBytes, vectors[4][1]+0x0C));
@@ -152,30 +149,15 @@ public class RedoRecordParser {
                 case DDL ->{
                     RedoChange redoChange = parseRedoChange(recordBytes, offset,ChangeCode.DDL);
                     changes.add(redoChange);
+                    change = redoChange;
                     offset += redoChange.changeLength();
                 }
                 case UNKNOWN -> {
                     RedoChange redoChange = parseRedoChange(recordBytes, offset,ChangeCode.UNKNOWN);
                     changes.add(redoChange);
-                    if (redoChange.data_object_id() == 73169 || redoChange.data_object_id() == 73168){
-                        System.out.println();;
-                    }
                     offset += redoChange.changeLength();
                 }
-                // Byte.toUnsignedInt(recordBytes[vectors[1][1] + 0x12]); =rowcount 3
-//                Byte.toUnsignedInt(recordBytes[vectors[3][1] + 2]); colCount 2
-//                Byte.toUnsignedInt(record[coords[index +2][0] + 3]); colsize
-//                coords[index + 2][0] + 4 start
-//                 Byte.toUnsignedInt(record[coords[index +2][0] + rowDiff++]); col2 size
-
             }
-        }
-        for (int i = 0; i < changes.size(); i++) {
-            RedoChange redoChange = changes.get(i);
-            if (redoChange.data_object_id() == 73169 || redoChange.data_object_id() == 73168){
-                System.out.println();;
-            }
-
         }
         return new RedoRecord(header.blockNumber(),header.sequence(),header.offset(),
                 length,headerLength, vld,scn,subScn,conUid,changes,change);
@@ -184,9 +166,6 @@ public class RedoRecordParser {
     private static RedoChange parseRedoChange(byte[] recordBytes,  int offset,ChangeCode changeCode) {
         ChangeHeader changeHeader = ChangeHeader.parseChangeHeader(recordBytes, offset);
         int data_object_id = (changeHeader.obj0() << 16) | changeHeader.obj1();
-        if ((data_object_id == 73169|| data_object_id == 73168)) {
-            System.out.print("");
-        }
         int vectorActTabLength = BinaryUtil.getU16(recordBytes, offset +ChangeHeader.CHANGE_HEADER_SIZE);
         int vectorSize = (vectorActTabLength - 2)/2;
         int vectorStart = offset +ChangeHeader.CHANGE_HEADER_SIZE+2;
@@ -207,9 +186,6 @@ public class RedoRecordParser {
             int i = vectors[2][1];
             if (i<recordBytes.length-0x24) {
                 obj  = BinaryUtil.getU32(recordBytes, i + 0x24);
-                if ((obj == 73169)) {
-                    System.out.print("");
-                }
             }
 
         }
@@ -222,192 +198,5 @@ public class RedoRecordParser {
 
     private static int appendFour(int data){
         return (data + 3) / 4 * 4;
-    }
-
-    private static void printInsert(RedoChange redoChange,byte[] recordBytes) throws SQLException {
-        int objId = redoChange.data_object_id();
-        // 73291
-        int[][] vectors = redoChange.vectors();
-        int vectorLength = vectors[2][0];
-        int vectorCurrent = vectors[2][1];
-        byte[] segment = new byte[vectorLength];
-        System.arraycopy(recordBytes,vectorCurrent,segment,0,vectorLength);
-        int colCount = Byte.toUnsignedInt(recordBytes[vectors[1][1] + 0x12]);
-        int [] cols = new int[colCount];
-        for (int i = 0; i < colCount; i++) {
-            cols[i] = i+1;
-        }
-        List<Object> datas = new ArrayList<>();
-        // 接下来是字段值的长度
-        for (int i = 2; i < 2 + colCount; i++) {
-            int len = vectors[i][0];
-            int start = vectors[i][1];
-            byte[] data = new byte[len];
-            System.arraycopy(recordBytes,start,data,0,len);
-            if (len == 2){
-                datas.add(NUMBER.toBigDecimal(data));
-            }else {
-                datas.add(new String(data));
-            }
-
-        }
-        System.out.println("--------------------");
-        System.out.println("obj Id: "+objId);
-        System.out.println(" op:"+redoChange.changeCode());
-        System.out.println("colIds:"+ Arrays.toString(cols));
-        System.out.println("data:"+ Arrays.toString(datas.toArray()));
-    }
-
-    private static void printUpdate(List<RedoChange> redoChange,byte[] recordBytes) throws SQLException {
-        RedoChange updateChange = null;
-        RedoChange undoChange = null;
-        for (RedoChange change : redoChange) {
-            if (change.changeCode().equals(ChangeCode.UPDATE)){
-                updateChange = change;
-            }else if (change.changeCode().equals(ChangeCode.UNDO_BEFORE)){
-                undoChange = change;
-            }
-        }
-
-        int objId = updateChange.data_object_id();
-        // 73291
-        if (objId == 73474){
-            System.out.print("");
-        }else {
-            return;
-        }
-
-        // after data start with 2
-        int[][] afterVectors = updateChange.vectors();
-        int vectorLength = afterVectors[2][0];
-        int vectorCurrent = afterVectors[2][1];
-        byte[] afterColsBytes = new byte[vectorLength];
-        System.arraycopy(recordBytes,vectorCurrent,afterColsBytes,0,vectorLength);
-        int colCount = afterColsBytes.length/2;
-        int [] afterCols = new int[colCount];
-        for (int i = 0; i < afterColsBytes.length; i+=2) {
-            afterCols[i/2] = (Byte.toUnsignedInt(afterColsBytes[i+1]) << 8) | Byte.toUnsignedInt(afterColsBytes[i]);
-        }
-        List<Object> afterDatas = new ArrayList<>();
-        int afterStartIndex = 3;
-        // 接下来是字段值的长度
-        for (int i = afterStartIndex; i < afterStartIndex + colCount; i++) {
-            int len = afterVectors[i][0];
-            int start = afterVectors[i][1];
-            byte[] data = new byte[len];
-            System.arraycopy(recordBytes,start,data,0,len);
-            if (afterCols[i-afterStartIndex] == 0){
-                afterDatas.add(NUMBER.toBigDecimal(data));
-            }else {
-                afterDatas.add(new String(data));
-            }
-        }
-
-        // before data start with 4, 镜像数据
-        int beforeStartIndex = 4;
-        int[][] beforeVectors = undoChange.vectors();
-        int vectorLengthBefore = beforeVectors[beforeStartIndex][0];
-        int vectorCurrentBefore = beforeVectors[beforeStartIndex][1];
-        byte[] beforeColsBytes = new byte[vectorLengthBefore];
-        System.arraycopy(recordBytes,vectorCurrentBefore,beforeColsBytes,0,vectorLengthBefore);
-        int colCountBefore = beforeColsBytes.length/2;
-        int [] beforeCols = new int[colCountBefore];
-        for (int i = 0; i < beforeColsBytes.length; i+=2) {
-            beforeCols[i/2] = (Byte.toUnsignedInt(beforeColsBytes[i+1]) << 8) | Byte.toUnsignedInt(beforeColsBytes[i]);
-        }
-        List<Object> beforeDatas = new ArrayList<>();
-        int beforeStartDataIndex = beforeStartIndex+1;
-        // 接下来是字段值的长度
-        for (int i = beforeStartDataIndex; i < beforeStartDataIndex + colCountBefore; i++) {
-            int len = beforeVectors[i][0];
-            int start = beforeVectors[i][1];
-            byte[] data = new byte[len];
-            System.arraycopy(recordBytes,start,data,0,len);
-            if (beforeCols[i-beforeStartDataIndex] == 0){
-                beforeDatas.add(NUMBER.toBigDecimal(data));
-            }else {
-                beforeDatas.add(new String(data));
-            }
-        }
-
-        // before data start with , 其他列数据，其中一个向量不知道是是啥。
-        int beforeOtherStartIndex = beforeStartDataIndex + colCountBefore+1;
-
-        int vectorLengthOther = beforeVectors[beforeOtherStartIndex][0];
-        int vectorCurrentOther = beforeVectors[beforeOtherStartIndex][1];
-        byte[] otherColsBytes = new byte[vectorLengthOther];
-        System.arraycopy(recordBytes,vectorCurrentOther,otherColsBytes,0,vectorLengthOther);
-        int colCountOther = otherColsBytes.length/2;
-        int [] otherCols = new int[colCountOther];
-        // 此处列索引要-1
-        for (int i = 0; i < otherColsBytes.length; i+=2) {
-            otherCols[i/2] = (Byte.toUnsignedInt(otherColsBytes[i+1]) << 8) | Byte.toUnsignedInt(otherColsBytes[i])-1;
-        }
-
-        List<Object> otherDatas = new ArrayList<>();
-        // 向量要间隔1
-        int otherStartDataIndex = beforeOtherStartIndex+2;
-        // 接下来是字段值的长度
-        for (int i = otherStartDataIndex; i < otherStartDataIndex + colCountOther; i++) {
-            int len = beforeVectors[i][0];
-            int start = beforeVectors[i][1];
-            byte[] data = new byte[len];
-            System.arraycopy(recordBytes,start,data,0,len);
-            if (otherCols[i-otherStartDataIndex] == 0){
-                otherDatas.add(NUMBER.toBigDecimal(data));
-            }else {
-                otherDatas.add(new String(data));
-            }
-        }
-        System.out.println("--------------------");
-        System.out.println("obj Id: "+objId);
-        System.out.println(" op:"+updateChange.changeCode());
-        System.out.println("colIds:"+ Arrays.toString(afterCols));
-        System.out.println("data:"+ Arrays.toString(afterDatas.toArray()));
-    }
-
-    private static void printDelete(List<RedoChange> redoChange,byte[] recordBytes) throws SQLException {
-        RedoChange updateChange = null;
-        RedoChange undoChange = null;
-        for (RedoChange change : redoChange) {
-            if (change.changeCode().equals(ChangeCode.DELETE)){
-                updateChange = change;
-            }else if (change.changeCode().equals(ChangeCode.UNDO_BEFORE)){
-                undoChange = change;
-            }
-        }
-
-        int objId = updateChange.data_object_id();
-        // 73291
-        if (objId == 73474){
-            System.out.print("");
-        }else {
-            return;
-        }
-
-        // after data start with 3
-        int beforeStartIndex = 3;
-        int[][] beforeVectors = undoChange.vectors();
-        int beforeColCount = Byte.toUnsignedInt(recordBytes[beforeVectors[beforeStartIndex][1] + 0x12]);
-        List<Object> beforeDatas = new ArrayList<>();
-//        // 接下来是字段值的长度
-        int beforeStartDataIndex = beforeStartIndex+1;
-        for (int i = beforeStartDataIndex; i < beforeStartDataIndex + beforeColCount; i++) {
-            int len = beforeVectors[i][0];
-            int start = beforeVectors[i][1];
-            byte[] data = new byte[len];
-            System.arraycopy(recordBytes,start,data,0,len);
-            if (i-beforeStartDataIndex == 0){
-                beforeDatas.add(NUMBER.toBigDecimal(data));
-            }else {
-                beforeDatas.add(new String(data));
-            }
-        }
-
-        System.out.println("--------------------");
-        System.out.println("obj Id: "+objId);
-        System.out.println(" op:"+updateChange.changeCode());
-//        System.out.println("colIds:"+ Arrays.toString(beforeCols));
-//        System.out.println("data:"+ Arrays.toString(beforeDatas.toArray()));
     }
 }

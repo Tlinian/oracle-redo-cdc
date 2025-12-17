@@ -3,6 +3,7 @@ package com.example.redo.config;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.ToString;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -13,6 +14,7 @@ import java.util.Properties;
 @Getter
 @Builder
 @AllArgsConstructor
+@ToString
 public class Config {
     private static final String REDO_FILE_PATH_KEY = "redo.file.path";
     private static final String REDO_FILE_PATH_DEFAULT = "redo.filename";

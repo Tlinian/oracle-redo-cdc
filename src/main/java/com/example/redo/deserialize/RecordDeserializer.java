@@ -49,7 +49,8 @@ public class RecordDeserializer implements Deserializer {
     public List<RedoEvent> deserializeDmlRecord(RecordDecoration redoRecord) {
         switch (redoRecord.getChangeCode()) {
             case DDL:
-                DdlEvent ddlEvent = DdlEvent.builder().scn(redoRecord.getScn()).commitScn(redoRecord.getScn()).eventType(EventType.DDL).sql(((DdlDecoration) redoRecord).getSql()).xid(redoRecord.getXid()).build();
+                DdlEvent ddlEvent = DdlEvent.builder().scn(redoRecord.getScn()).commitScn(redoRecord.getScn())
+                        .kind(((DdlDecoration) redoRecord).getKind()).eventType(EventType.DDL).sql(((DdlDecoration) redoRecord).getSql()).xid(redoRecord.getXid()).build();
                 return Collections.singletonList(ddlEvent);
             case COMMIT:
                 return Collections.singletonList(CommitEvent.builder().commitScn(redoRecord.getScn()).scn(redoRecord.getScn()).xid(redoRecord.getXid()).build());
@@ -167,8 +168,8 @@ public class RecordDeserializer implements Deserializer {
 
         UpdateEvent updateEvent = UpdateEvent.builder().scn(record.getScn())
                 .commitScn(record.getScn()).tableId(tableId).objId(record.getObjId())
-                .beforeCols(beforeColsList.toArray(new Integer[0]))
-                .afterCols(afterColsList.toArray(new Integer[0])).before(beforeData).after(afterData).xid(record.getXid()).build();
+                .beforeCols(beforeColsList.stream().mapToInt(i -> i).toArray())
+                .afterCols(afterColsList.stream().mapToInt(i -> i).toArray()).before(beforeData).after(afterData).xid(record.getXid()).build();
         return Collections.singletonList(updateEvent);
     }
 }

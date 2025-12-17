@@ -12,13 +12,13 @@ import java.util.List;
 @ToString
 @Builder
 public class UpdateEvent extends DmlEvent{
-    Integer[] afterCols;
-    Integer[] beforeCols;
+    protected TableId tableId;
+    int[] afterCols;
+    int[] beforeCols;
     List<Object> after;
     List<Object> before;
     protected Xid xid;
     protected int objId;
-    protected TableId tableId;
     protected long commitScn;
     protected long scn;
 

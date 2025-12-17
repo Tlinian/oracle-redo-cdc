@@ -16,8 +16,6 @@ import java.util.stream.Collectors;
 @Slf4j
 @Getter
 public class MetadataManager {
-    // URL, USER, PASSWORD
-    private static final String URL = "jdbc:oracle:thin:@localhost:1521:ORCLCDB";
     private static final String QUERY_CON_UID = "select CON_ID,CON_UID from V$CONTAINERS where NAME = ?";
     private static final String QUERY_TABLE_ID = "select O.OBJECT_ID,O.DATA_OBJECT_ID,O.CON_ID, T.OWNER, T.TABLE_NAME, T.DEPENDENCIES, P.PDB_NAME,\n" +
             "       decode(O.OBJECT_TYPE, 'TABLE', 'Y', 'N') IS_TABLE,\n" +
@@ -38,8 +36,6 @@ public class MetadataManager {
 
     private static final String QUERY_COLUMN_ID = "select OWNER,TABLE_NAME,COLUMN_NAME,DATA_TYPE,COLUMN_ID from DBA_TAB_COLUMNS where OWNER in (%s)";
 
-    private static final String USER = "system";
-    private static final String PASSWORD = "oracle";
     private Config config;
     private Connection connection;
     private long conUid;

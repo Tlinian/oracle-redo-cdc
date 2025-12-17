@@ -10,9 +10,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.ToString;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
 @Getter
 @ToString
@@ -38,9 +36,9 @@ public class LobKdlirbimgDecoration implements RecordDecoration {
                 redoChange = change;
             }
         }
-        int objId = redoChange.data_object_id();
+        int objId = redoChange.getDataObjectId();
         // 73291
-        int[][] vectors = redoChange.vectors();
+        int[][] vectors = redoChange.getVectors();
         // xid
         int xid0 = BinaryUtil.getU16(recordBytes,vectors[1][1] + 16);
         int xid1 = BinaryUtil.getU16(recordBytes,vectors[1][1] + 18);

@@ -1,14 +1,17 @@
 package com.example.redo.model.origin;
 
 import com.example.redo.model.ChangeCode;
+import lombok.Getter;
 import lombok.Setter;
 
 import java.util.Objects;
 
 public final class RedoChange {
     private final ChangeHeader changeHeader;
+    @Getter
     @Setter
     private int dataObjectId;
+    @Getter
     private final int[][] vectors;
     private final int changeLength;
     private final ChangeCode changeCode;
@@ -29,14 +32,6 @@ public final class RedoChange {
 
     public ChangeHeader changeHeader() {
         return changeHeader;
-    }
-
-    public int data_object_id() {
-        return dataObjectId;
-    }
-
-    public int[][] vectors() {
-        return vectors;
     }
 
     public int changeLength() {

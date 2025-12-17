@@ -1,6 +1,5 @@
 package com.example.redo.model.decoration;
 
-import com.example.redo.ConvertRedoRecord;
 import com.example.redo.deserialize.RBA;
 import com.example.redo.model.ChangeCode;
 import com.example.redo.model.Xid;
@@ -50,9 +49,9 @@ public class InsertMultiDecoration implements  RecordDecoration {
                 redoChange = change;
             }
         }
-        int objId = redoChange.data_object_id();
+        int objId = redoChange.getDataObjectId();
         // 73291
-        int[][] vectors = redoChange.vectors();
+        int[][] vectors = redoChange.getVectors();
         // xid
         Xid xid = getXid(vectors,recordBytes);
         int rowCount = Byte.toUnsignedInt(recordBytes[vectors[1][1] + 0x12]);
