@@ -1,6 +1,5 @@
 package com.xdream.redo.parser;
 
-import com.example.redo.model.*;
 import com.xdream.redo.model.BlockHeader;
 import com.xdream.redo.model.ChangeCode;
 import com.xdream.redo.model.origin.ChangeHeader;

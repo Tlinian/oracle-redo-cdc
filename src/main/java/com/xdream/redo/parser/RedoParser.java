@@ -3,7 +3,6 @@ package com.xdream.redo.parser;
 import com.xdream.redo.deserialize.Deserializer;
 import com.xdream.redo.deserialize.RBA;
 import com.xdream.redo.metadata.Checker;
-import com.example.redo.model.*;
 import com.xdream.redo.model.*;
 import com.xdream.redo.model.decoration.RecordDecoration;
 import com.xdream.redo.model.origin.RedoChange;

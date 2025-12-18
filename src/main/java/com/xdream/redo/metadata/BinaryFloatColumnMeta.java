@@ -11,6 +11,9 @@ public class BinaryFloatColumnMeta extends ColumnMetaBase{
 
     @Override
     public Object convertData(byte[] data) {
+        if (data.length == 0) {
+            return null;
+        }
         try {
             return new BINARY_FLOAT(data).floatValue();
         } catch (SQLException e) {

@@ -11,6 +11,9 @@ public class TimestampColumnMeta extends ColumnMetaBase{
 
     @Override
     public Object convertData(byte[] data) {
+        if (data.length == 0) {
+            return null;
+        }
         try {
             return new TIMESTAMP(data).timestampValue();
         } catch (SQLException e) {

@@ -8,10 +8,12 @@ import com.xdream.redo.model.origin.RedoRecord;
 import com.xdream.redo.util.BinaryUtil;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 @Getter
 @Builder
 public class UpdateDecoration implements  RecordDecoration {
@@ -58,7 +60,10 @@ public class UpdateDecoration implements  RecordDecoration {
         int objId = updateChange.getDataObjectId();
         // after data start with 2
         int[][] afterVectors = updateChange.getVectors();
-
+        if (undoChange == null){
+            log.warn("update dml, undoChange is null, objId: {}", objId);
+            return null;
+        }
         Xid xid = getXid(undoChange.getVectors(), recordBytes);
         int vectorLength = afterVectors[2][0];
         int vectorCurrent = afterVectors[2][1];

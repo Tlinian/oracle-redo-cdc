@@ -9,6 +9,9 @@ public class DateColumnMeta extends ColumnMetaBase{
 
     @Override
     public Object convertData(byte[] data) {
+        if (data.length == 0) {
+            return null;
+        }
         return new DATE(data).dateValue();
     }
 }

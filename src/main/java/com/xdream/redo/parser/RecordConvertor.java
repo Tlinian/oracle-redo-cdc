@@ -5,10 +5,12 @@ import com.xdream.redo.model.ChangeCode;
 import com.xdream.redo.model.decoration.*;
 import com.xdream.redo.model.origin.RedoChange;
 import com.xdream.redo.model.origin.RedoRecord;
+import lombok.extern.slf4j.Slf4j;
 
 import java.sql.SQLException;
 import java.util.List;
 
+@Slf4j
 public class RecordConvertor {
     public static RecordDecoration convert(RedoRecord record, byte[] recordBytes, Checker checker) throws SQLException {
         List<RedoChange> changes = record.changes();
@@ -46,7 +48,8 @@ public class RecordConvertor {
                return InsertMultiDecoration.parse(record,recordBytes);
            }
            case UPDATE_MULTI -> {
-               return InsertMultiDecoration.parse(record,recordBytes);
+               log.warn("update multi dml, not support, objId: {}", redoChange.getDataObjectId());
+               return null;
            }
            case LOB_KDLIRBIMG -> {
                return LobKdlirbimgDecoration.parse(record,recordBytes);

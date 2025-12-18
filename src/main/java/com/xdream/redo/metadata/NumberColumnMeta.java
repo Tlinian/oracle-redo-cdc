@@ -12,6 +12,9 @@ public class NumberColumnMeta extends ColumnMetaBase{
 
     @Override
     public Object convertData(byte[] data) {
+        if (data.length == 0) {
+            return null;
+        }
         try {
             return NUMBER.toBigDecimal(data);
         } catch (SQLException e) {

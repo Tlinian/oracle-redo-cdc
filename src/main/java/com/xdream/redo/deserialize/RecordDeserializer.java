@@ -5,12 +5,14 @@ import com.xdream.redo.metadata.ColumnMeta;
 import com.xdream.redo.metadata.MetadataManager;
 import com.xdream.redo.metadata.TableId;
 import com.xdream.redo.metadata.TableMetadata;
-import com.example.redo.model.decoration.*;
 import com.xdream.redo.model.decoration.*;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
+@Slf4j
 public class RecordDeserializer implements Deserializer {
     private Config config;
     MetadataManager metadataManager;
@@ -41,7 +43,17 @@ public class RecordDeserializer implements Deserializer {
         }
         List<RedoEvent> e = deserializeDmlRecord(record);
         if (e != null) {
-            redoEvents.addAll(e);
+            for (int i = 0; i < e.size(); i++) {
+                RedoEvent redoEvent = e.get(i);
+                try {
+                    while (!redoEvents.offer(redoEvent,300, TimeUnit.MILLISECONDS)){
+                        log.info("redoEvents is full, wait 100ms");
+                        Thread.sleep(100);
+                    }
+                } catch (InterruptedException ex) {
+                    throw new RuntimeException(ex);
+                }
+            }
         }
     }
 

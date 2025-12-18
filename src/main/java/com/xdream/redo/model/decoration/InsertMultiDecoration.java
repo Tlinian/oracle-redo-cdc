@@ -26,7 +26,7 @@ public class InsertMultiDecoration implements  RecordDecoration {
 
     @Override
     public ChangeCode getChangeCode() {
-        return ChangeCode.INSERT;
+        return ChangeCode.INSERT_MULTI;
     }
 
     private static Xid getXid(int[][] vectors, byte[] recordBytes){
@@ -68,6 +68,12 @@ public class InsertMultiDecoration implements  RecordDecoration {
                 col.add(j);
                 int len = Byte.toUnsignedInt(recordBytes[startPosition ]);
                 startPosition++;
+                if (len == 0xFE){
+                    len = Short.toUnsignedInt(BinaryUtil.getU16(recordBytes,startPosition));
+                    startPosition+=2;
+                }else if (len == 0xFF){
+                    len=0;
+                }
                 int start = startPosition;
                 byte[] value = Arrays.copyOfRange(recordBytes, start, start+len);
                 data.add(value);
