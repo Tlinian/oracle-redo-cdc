@@ -32,6 +32,7 @@ public class RedoParser {
         this.deserializer = deserializer;
         this.checker = checker;
         this.startScn = startScn;
+        this.lastScn = startScn;
     }
 
     private byte[] lastRecord ;
@@ -42,6 +43,8 @@ public class RedoParser {
     private Deserializer deserializer;
     @Getter
     private RBA dba;
+    @Getter
+    private long lastScn;
 
     public RedoParseResult parse(Path file, RBA dba) throws IOException {
         this.dba = dba;
@@ -141,6 +144,7 @@ public class RedoParser {
 
     private void dealEvent(BlockHeader header, byte[] lastRecord) throws SQLException {
         RedoRecord redoRecord = RedoRecordParser.parseRedoRecord(header, lastRecord);
+        lastScn = redoRecord.scn();
         RecordDecoration convert = RecordConvertor.convert(redoRecord, lastRecord, checker);
         if (convert != null) {
             if (convert.getChangeCode() == ChangeCode.DDL){
