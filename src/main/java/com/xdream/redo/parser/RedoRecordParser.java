@@ -91,8 +91,8 @@ public class RedoRecordParser {
                     offset += redoChange.changeLength();
                     change = redoChange;
                 }
-                case UPDATE_MULTI ->{
-                    RedoChange redoChange = parseRedoChange(recordBytes, offset,ChangeCode.UPDATE_MULTI);
+                case DELETE_MULTI ->{
+                    RedoChange redoChange = parseRedoChange(recordBytes, offset,ChangeCode.DELETE_MULTI);
                     changes.add(redoChange);
                     offset += redoChange.changeLength();
                     change = redoChange;
@@ -170,7 +170,12 @@ public class RedoRecordParser {
         int vectorStart = offset +ChangeHeader.CHANGE_HEADER_SIZE+2;
         int vectorTabLength = appendFour(vectorActTabLength);
         int vectorCurrent = offset + ChangeHeader.CHANGE_HEADER_SIZE+vectorTabLength;
-        int[][] vectors = new int[vectorSize][2];
+        int[][] vectors = null;
+        try {
+            vectors = new int[vectorSize][2];
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
         for (int i = 0; i < vectorSize; i++) {
             short vectorLength = BinaryUtil.getU16(recordBytes, vectorStart + i * 2);
             // 将vectorLength不到4的倍数，自动凑齐四的倍数

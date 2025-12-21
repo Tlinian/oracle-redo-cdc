@@ -28,16 +28,23 @@ public class DeleteDecoration implements  RecordDecoration {
         return ChangeCode.DELETE;
     }
 
-    private static Xid getXid(int[][] vectors, byte[] recordBytes){
-        int len = vectors[0][0];
-        int start = vectors[0][1];
-        byte[] segment = new byte[len];
-        System.arraycopy(recordBytes,start,segment,0,len);
-        int xid0 = BinaryUtil.getU16(segment,8);
-        int xid1 = BinaryUtil.getU16(segment,10);
-        int xid2 = BinaryUtil.getU16(segment,12);
-        int xid3 = BinaryUtil.getU16(segment,14);
-        return new Xid(xid0,xid1,xid2,xid3);
+    private static Xid getXid(int[][] vectors, byte[] recordBytes,RedoChange undoChange){
+        if (Byte.toUnsignedInt(recordBytes[vectors[0][1]]) == 0x01 ||
+                Byte.toUnsignedInt(recordBytes[vectors[0][1]]) == 0x11) {
+            final int start = (Byte.toUnsignedInt(recordBytes[vectors[0][1] + 1]) & 0x08) == 0 ?
+                    4 : 8;
+            return new Xid(
+                    BinaryUtil.getU16(recordBytes, vectors[0][1] + start),
+                    BinaryUtil.getU16(recordBytes, vectors[0][1] + start + 0x02),
+                    BinaryUtil.getU16(recordBytes, vectors[0][1] + start + 0x04),
+                    BinaryUtil.getU16(recordBytes, vectors[0][1] + start + 0x06));
+        }
+        int[][] coords = undoChange.getVectors();
+        return new Xid(
+                BinaryUtil.getU16(recordBytes, coords[0][1] + 0x08),
+                BinaryUtil.getU16(recordBytes, coords[0][1] + 0x0A),
+                BinaryUtil.getU16(recordBytes, coords[0][1] + 0x0C),
+                BinaryUtil.getU16(recordBytes, coords[0][1] + 0x0E));
     }
 
     public static DeleteDecoration parse(RedoRecord record, byte[] recordBytes) {
@@ -58,7 +65,7 @@ public class DeleteDecoration implements  RecordDecoration {
         int beforeStartIndex = 3;
         int[][] beforeVectors = undoChange.getVectors();
 
-        Xid beforeXid = getXid(beforeVectors, recordBytes);
+        Xid beforeXid = getXid(beforeVectors, recordBytes,undoChange);
         int beforeColCount = Byte.toUnsignedInt(recordBytes[beforeVectors[beforeStartIndex][1] + 0x12]);
         int[] beforeCols = new int[beforeColCount];
         for (int i = 0; i < beforeColCount; i++) {

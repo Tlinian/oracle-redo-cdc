@@ -68,7 +68,7 @@ public class App implements Callable<Integer> {
             CountDownLatch countDownLatch = new CountDownLatch(1);
             executorService.submit(() -> {
                 try {
-                    RedoParseResult result = parser.parse(redoFilePath);
+                    RedoParseResult result = parser.parse(redoFilePath,null);
                     System.out.println("解析完成，共解析 " + result.records().size() + " 条记录");
                     countDownLatch.countDown();
                 } catch (Exception e) {

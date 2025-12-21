@@ -32,7 +32,15 @@ public class RecordDeserializer implements Deserializer {
             if (!metadataManager.getChecker().check(record.getConUid(), decoration.getObjId())) {
                 return;
             }
+        }if (record instanceof DeleteMultiDecoration decoration){
+            if (!metadataManager.getChecker().check(record.getConUid(), decoration.getObjId())) {
+                return;
+            }
         }else if (record instanceof InsertDecoration decoration){
+            if (!metadataManager.getChecker().check(record.getConUid(), decoration.getObjId())) {
+                return;
+            }
+        }else if (record instanceof InsertMultiDecoration decoration){
             if (!metadataManager.getChecker().check(record.getConUid(), decoration.getObjId())) {
                 return;
             }
@@ -69,6 +77,8 @@ public class RecordDeserializer implements Deserializer {
                 return insertRecord((InsertDecoration) redoRecord);
             case INSERT_MULTI:
                 return insertMultiRecord((InsertMultiDecoration) redoRecord);
+            case DELETE_MULTI:
+                return deleteMultiRecord((DeleteMultiDecoration) redoRecord);
             case DELETE:
                 return deleteRecord((DeleteDecoration) redoRecord);
             case UPDATE:
@@ -76,6 +86,25 @@ public class RecordDeserializer implements Deserializer {
             default:
                 return null;
         }
+    }
+
+    public List<RedoEvent> deleteMultiRecord(DeleteMultiDecoration record) {
+        List<List<byte[]>> datas = record.getDatas();
+        int[] afterCols = record.getBeforeCols();
+        TableId tableId = metadataManager.getTableIdMap().get(record.getObjId());
+        TableMetadata tableMetadata = metadataManager.getTableMetadataMap().get(tableId);
+        List<RedoEvent> deleteEvents = new ArrayList<>();
+        for (int i = 0; i < datas.size(); i++) {
+            List<Object> beforeData = new ArrayList<>();
+            List<byte[]> after = datas.get(i);
+            for (int j = 0; j < after.size(); j++) {
+                beforeData.add(tableMetadata.getColumnIdMap().get(afterCols[j]).convertData(after.get(j)));
+            }
+            DeleteEvent deleteEvent = DeleteEvent.builder().scn(record.getScn())
+                    .commitScn(record.getScn()).tableId(tableId).objId(record.getObjId()).beforeCols(afterCols).before(beforeData).xid(record.getXid()).build();
+            deleteEvents.add(deleteEvent);
+        }
+        return deleteEvents;
     }
 
     public List<RedoEvent> insertMultiRecord(InsertMultiDecoration record) {

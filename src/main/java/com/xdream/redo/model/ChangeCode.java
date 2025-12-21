@@ -10,7 +10,7 @@ public enum ChangeCode {
     DELETE((short) 0x0B03),
     UPDATE((short) 0x0B05),
     INSERT_MULTI((short) 0x0B0B),
-    UPDATE_MULTI((short) 0x0B0C),
+    DELETE_MULTI((short) 0x0B0C),
     LLB((short) 0x0B11),
     UNDO_SEM((short) 0x0502),
     UNDO_BEFORE((short) 0x0501),

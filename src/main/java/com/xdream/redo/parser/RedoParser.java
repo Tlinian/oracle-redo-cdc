@@ -46,19 +46,19 @@ public class RedoParser {
     @Getter
     private long lastScn;
 
-    public RedoParseResult parse(Path file, RBA dba) throws IOException {
+    public RedoParseResult parse(Path file, RBA dba, RedoMiner.CurrentRedo currentRedo) throws IOException {
         this.dba = dba;
-        return parse(file);
+        return parse(file,currentRedo);
     }
 
-    public RedoParseResult parse(Path file) throws IOException {
+    public RedoParseResult parse(Path file, RedoMiner.CurrentRedo currentRedo) throws IOException {
         Objects.requireNonNull(file, "file");
         List<RedoRecord> records = new ArrayList<>();
         List<RedoChange> dml = new ArrayList<>();
         List<RedoChange> ddl = new ArrayList<>();
 
         try (FileChannel channel = FileChannel.open(file, StandardOpenOption.READ)) {
-            long fileSize = channel.size();
+            long fileSize = currentRedo == null?channel.size():currentRedo.getBlockCount()*currentRedo.getBlockSize();
             int blockSize = detectBlockSize(channel);
             int seq = 0;
 
@@ -136,6 +136,9 @@ public class RedoParser {
                     }
                 }
             }
+            lastRecord=null;
+            copiedRecordLen=0;
+            needCopyLen=0;
             return new RedoParseResult(blockSize, records, dml, ddl);
         } catch (SQLException e) {
             throw new RuntimeException(e);

@@ -28,31 +28,40 @@ public class InsertDecoration implements  RecordDecoration {
         return ChangeCode.INSERT;
     }
 
-    private static Xid getXid(int[][] vectors, byte[] recordBytes){
-        int len = vectors[0][0];
-        int start = vectors[0][1];
-        byte[] segment = new byte[len];
-        System.arraycopy(recordBytes,start,segment,0,len);
-        int xid0 = BinaryUtil.getU16(segment,8);
-        int xid1 = BinaryUtil.getU16(segment,10);
-        int xid2 = BinaryUtil.getU16(segment,12);
-        int xid3 = BinaryUtil.getU16(segment,14);
-        return new Xid(xid0,xid1,xid2,xid3);
+    private static Xid getXid(int[][] vectors, byte[] recordBytes,RedoChange undoChange){
+        if (Byte.toUnsignedInt(recordBytes[vectors[0][1]]) == 0x01 ||
+                Byte.toUnsignedInt(recordBytes[vectors[0][1]]) == 0x11) {
+            final int start = (Byte.toUnsignedInt(recordBytes[vectors[0][1] + 1]) & 0x08) == 0 ?
+                    4 : 8;
+            return new Xid(
+                    BinaryUtil.getU16(recordBytes, vectors[0][1] + start),
+                    BinaryUtil.getU16(recordBytes, vectors[0][1] + start + 0x02),
+                    BinaryUtil.getU16(recordBytes, vectors[0][1] + start + 0x04),
+                    BinaryUtil.getU16(recordBytes, vectors[0][1] + start + 0x06));
+        }
+        int[][] coords = undoChange.getVectors();
+        return new Xid(
+                    BinaryUtil.getU16(recordBytes, coords[0][1] + 0x08),
+                BinaryUtil.getU16(recordBytes, coords[0][1] + 0x0A),
+                BinaryUtil.getU16(recordBytes, coords[0][1] + 0x0C),
+                BinaryUtil.getU16(recordBytes, coords[0][1] + 0x0E));
     }
 
     public static InsertDecoration parse(RedoRecord record, byte[] recordBytes) {
         RedoChange redoChange = null;
+        RedoChange undoChange = null;
         for(RedoChange change : record.changes()){
             if (change.changeCode() == ChangeCode.INSERT){
                 redoChange = change;
+            }else if (change.changeCode() == ChangeCode.UNDO_BEFORE){
+                undoChange = change;
             }
         }
         int objId = redoChange.getDataObjectId();
         // 73291
         int[][] vectors = redoChange.getVectors();
         // xid
-        Xid xid = getXid(vectors,recordBytes);
-
+        Xid xid = getXid(vectors,recordBytes,undoChange);
         int vectorLength = vectors[2][0];
         int vectorCurrent = vectors[2][1];
         byte[] segment = new byte[vectorLength];

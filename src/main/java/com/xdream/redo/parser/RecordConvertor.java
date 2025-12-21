@@ -47,9 +47,8 @@ public class RecordConvertor {
            case INSERT_MULTI -> {
                return InsertMultiDecoration.parse(record,recordBytes);
            }
-           case UPDATE_MULTI -> {
-               log.warn("update multi dml, not support, objId: {}", redoChange.getDataObjectId());
-               return null;
+           case DELETE_MULTI -> {
+               return DeleteMultiDecoration.parse(record,recordBytes);
            }
            case LOB_KDLIRBIMG -> {
                return LobKdlirbimgDecoration.parse(record,recordBytes);
