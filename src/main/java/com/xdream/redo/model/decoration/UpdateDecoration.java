@@ -66,6 +66,10 @@ public class UpdateDecoration implements  RecordDecoration {
 
         int objId = updateChange.getDataObjectId();
         // after data start with 2
+        if (undoChange == null) {
+            // rollback
+            return null;
+        }
         int[][] afterVectors = updateChange.getVectors();
         if (undoChange == null){
             log.warn("update dml, undoChange is null, objId: {}", objId);

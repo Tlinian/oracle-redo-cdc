@@ -152,6 +152,8 @@ public class RedoParser {
         if (convert != null) {
             if (convert.getChangeCode() == ChangeCode.DDL){
                 deserializer.processRecord(convert);
+            }else if (convert.getChangeCode() == ChangeCode.ROLLBACK){
+                xidOracleTranctionMap.remove(convert.getXid());
             }else if (xidOracleTranctionMap.containsKey(convert.getXid())) {
                 OracleTranction oracleTranction = xidOracleTranctionMap.get(convert.getXid());
                 if (convert.getChangeCode() == ChangeCode.COMMIT) {

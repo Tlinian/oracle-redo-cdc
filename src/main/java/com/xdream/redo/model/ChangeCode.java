@@ -15,6 +15,7 @@ public enum ChangeCode {
     UNDO_SEM((short) 0x0502),
     UNDO_BEFORE((short) 0x0501),
     COMMIT((short) 0x0504),
+    ROLLBACK((short) 0xBBBB),
     DDL((short) 0x1801),
     LOB_REDO((short) 0x1A02),
     LOB_KDLIRBIMG((short) 0x1A06),

@@ -24,10 +24,10 @@ public class CommitDecoration implements  RecordDecoration {
         return ChangeCode.COMMIT;
     }
 
-    public static CommitDecoration parse(RedoRecord record, byte[] recordBytes) {
+    public static RecordDecoration parse(RedoRecord record, byte[] recordBytes) {
         RedoChange ddlChange = null;
         for (RedoChange change : record.changes()) {
-            if (change.changeCode().equals(ChangeCode.COMMIT)){
+            if (change.changeCode().equals(ChangeCode.COMMIT)) {
                 ddlChange = change;
             }
         }
@@ -41,6 +41,17 @@ public class CommitDecoration implements  RecordDecoration {
         int xid3 = BinaryUtil.getU16(recordBytes,afterVectors[0][1]+6);
         final short xid0 = (short) (cls >= 0x0F ? (cls - 0x0F) / 2 : -1);
         Xid xid = new Xid(xid0, xid1, xid2, xid3);
+
+        short flg = recordBytes[afterVectors[0][1] + 0x10];
+        if ((flg & 0x04) != 0){
+            return RollbackDecoration.builder()
+                    .scn(record.scn())
+                    .rba(new RBA(record.sequence(), record.offset(), record.blockNumber()))
+                    .conUid(record.conUid())
+                    .xid(xid)
+                    .build();
+
+        }
         return CommitDecoration.builder()
                 .scn(record.scn())
                 .rba(new RBA(record.sequence(), record.offset(), record.blockNumber()))

@@ -59,6 +59,7 @@ public class DeleteDecoration implements  RecordDecoration {
         }
         int objId = updateChange.getDataObjectId();
         if (undoChange == null) {
+            // rollback
             return null;
         }
         // after data start with 3

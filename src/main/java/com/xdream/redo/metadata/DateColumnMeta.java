@@ -12,6 +12,6 @@ public class DateColumnMeta extends ColumnMetaBase{
         if (data.length == 0) {
             return null;
         }
-        return new DATE(data).dateValue();
+        return new DATE(data).dateValue().toString();
     }
 }

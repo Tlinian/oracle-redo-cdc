@@ -61,7 +61,13 @@ public class InsertDecoration implements  RecordDecoration {
         // 73291
         int[][] vectors = redoChange.getVectors();
         // xid
-        Xid xid = getXid(vectors,recordBytes,undoChange);
+        Xid xid = null;
+        try {
+            xid = getXid(vectors,recordBytes,undoChange);
+        } catch (Exception e) {
+            // rollback
+            return null;
+        }
         int vectorLength = vectors[2][0];
         int vectorCurrent = vectors[2][1];
         byte[] segment = new byte[vectorLength];

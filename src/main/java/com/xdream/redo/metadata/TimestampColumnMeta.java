@@ -15,7 +15,7 @@ public class TimestampColumnMeta extends ColumnMetaBase{
             return null;
         }
         try {
-            return new TIMESTAMP(data).timestampValue();
+            return new TIMESTAMP(data).timestampValue().toString();
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }

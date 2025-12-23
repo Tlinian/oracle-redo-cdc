@@ -7,6 +7,9 @@ public class VarcharColumnMeta extends ColumnMetaBase{
 
     @Override
     public Object convertData(byte[] data) {
+        if (data.length == 0) {
+            return null;
+        }
         return new String(data);
     }
 }

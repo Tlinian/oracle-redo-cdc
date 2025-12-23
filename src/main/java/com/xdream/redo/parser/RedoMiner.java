@@ -113,46 +113,48 @@ select NAME,SEQUENCE#,BLOCKS,BLOCK_SIZE from SYS.V_$ARCHIVED_LOG where NEXT_CHAN
         }
     }
 
-    private List<CurrentRedo> getCurrentRedoList(long Scn,int seq) throws SQLException {
+    private List<CurrentRedo> getCurrentRedoList(long scn,int seq) throws SQLException {
         // 先查询归档
-        archiveStatement.setLong(1, Scn);
-        archiveStatement.setInt(2, seq);
-        try (ResultSet resultSet = archiveStatement.executeQuery()) {
-            List<CurrentRedo> currentRedoList = new ArrayList<>();
-            while (resultSet.next()) {
-                String member = resultSet.getString("NAME");
-                member = member.replace(config.getOriginPath(), config.getTargetPath());
-                currentRedoList.add(new CurrentRedo(
-                        Long.MAX_VALUE,
+        while (true){
+            archiveStatement.setLong(1, scn);
+            archiveStatement.setInt(2, seq);
+            try (ResultSet resultSet = archiveStatement.executeQuery()) {
+                List<CurrentRedo> currentRedoList = new ArrayList<>();
+                while (resultSet.next()) {
+                    String member = resultSet.getString("NAME");
+                    member = member.replace(config.getOriginPath(), config.getTargetPath());
+                    currentRedoList.add(new CurrentRedo(
+                            Long.MAX_VALUE,
 //                        resultSet.getLong("NEXT_CHANGE#"),
-                        resultSet.getInt("SEQUENCE#"),
-                        member,
-                        resultSet.getInt("BLOCK_SIZE"),
-                        resultSet.getLong("BLOCKS"),false
-                ));
+                            resultSet.getInt("SEQUENCE#"),
+                            member,
+                            resultSet.getInt("BLOCK_SIZE"),
+                            resultSet.getLong("BLOCKS"),false
+                    ));
+                }
+                if (!currentRedoList.isEmpty()){
+                    return currentRedoList;
+                }
             }
-            if (!currentRedoList.isEmpty()){
-                return currentRedoList;
-            }
-        }
 
 
-        // 再查询在线日志
-        onlineStatement.setLong(1, Scn);
-        try (ResultSet resultSet = onlineStatement.executeQuery()) {
-            if (!resultSet.next()) {
-                throw new RuntimeException("查询当前日志文件失败");
-            }else {
-                String member = resultSet.getString("MEMBER");
-                member = member.replace(config.getOriginPath(), config.getTargetPath());
-                int blocksize = resultSet.getInt("BLOCKSIZE");
-                return Collections.singletonList(new CurrentRedo(
-                        Long.MAX_VALUE,
-                        resultSet.getInt("SEQUENCE#"),
-                        member,
-                        blocksize,
-                        resultSet.getLong("BYTES")/blocksize, true
-                ));
+            // 再查询在线日志
+            onlineStatement.setLong(1, scn);
+            try (ResultSet resultSet = onlineStatement.executeQuery()) {
+                if (!resultSet.next()) {
+                    log.warn("no has online redo in {}", scn);
+                }else {
+                    String member = resultSet.getString("MEMBER");
+                    member = member.replace(config.getOriginPath(), config.getTargetPath());
+                    int blocksize = resultSet.getInt("BLOCKSIZE");
+                    return Collections.singletonList(new CurrentRedo(
+                            Long.MAX_VALUE,
+                            resultSet.getInt("SEQUENCE#"),
+                            member,
+                            blocksize,
+                            resultSet.getLong("BYTES")/blocksize, true
+                    ));
+                }
             }
         }
     }

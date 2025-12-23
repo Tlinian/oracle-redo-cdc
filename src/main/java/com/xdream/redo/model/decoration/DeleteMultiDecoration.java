@@ -53,7 +53,10 @@ public class DeleteMultiDecoration implements  RecordDecoration {
             }
         }
         int objId = redoChange.getDataObjectId();
-        // 73291
+        if (undoChange == null) {
+            // rollback
+            return null;
+        }
         int[][] vectors = undoChange.getVectors();
         // xid
         Xid xid = getXid(vectors,recordBytes);
