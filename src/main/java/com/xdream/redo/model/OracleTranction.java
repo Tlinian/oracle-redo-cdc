@@ -74,7 +74,7 @@ public class OracleTranction {
                 int lSize = llbRedoRecord.getLSize();
                 int colIndex = columnId - 1;
                 for (int i = 0; i < record.getAfterCols().length; i++) {
-                    if (record.getAfterCols()[i] == columnId){
+                    if (record.getAfterCols()[i] == columnId-1){
                         colIndex = i;
                     }
                 }

@@ -151,7 +151,9 @@ public class RedoParser {
         RecordDecoration convert = RecordConvertor.convert(redoRecord, lastRecord, checker);
         if (convert != null) {
             if (convert.getChangeCode() == ChangeCode.DDL){
-                deserializer.processRecord(convert);
+                if (convert.getScn() > startScn){
+                    deserializer.processRecord(convert);
+                }
             }else if (convert.getChangeCode() == ChangeCode.ROLLBACK){
                 xidOracleTranctionMap.remove(convert.getXid());
             }else if (xidOracleTranctionMap.containsKey(convert.getXid())) {
